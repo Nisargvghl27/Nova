@@ -74,8 +74,11 @@ class _MainScreenState extends State<MainScreen> {
     double income = 0;
     double expense = 0;
     for (final tx in _transactions) {
-      if (tx.isExpense) expense += tx.amount;
-      else income += tx.amount;
+      if (tx.isExpense) {
+        expense += tx.amount;
+      } else {
+        income += tx.amount;
+      }
     }
     const double openingBalance = 1000;
     final double totalBalance = openingBalance + income - expense;

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart'; // Import the Login screen
+import 'screens/splash_screen.dart'; // Ensure this file exists
 
 void main() {
   runApp(const MyApp());
@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Personalized Budget App',
+      title: 'Nova',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         // Optional: define a color scheme for a modern look
@@ -20,8 +20,9 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      // Set the LoginScreen as the home screen
-      home: const LoginScreen(),
+      
+      home: const SplashScreen(), 
+      
       debugShowCheckedModeBanner: false,
     );
   }

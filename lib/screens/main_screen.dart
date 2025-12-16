@@ -16,6 +16,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
+  // FIXED: Added 'category' parameter
   final List<Transaction> _transactions = [
     Transaction(
       id: '1',
@@ -29,7 +30,7 @@ class _MainScreenState extends State<MainScreen> {
     ),
   ];
 
-  // 1. New variables to temporarily store deleted data
+  // Variables for Undo
   Transaction? _recentlyDeletedTransaction;
   int? _recentlyDeletedIndex;
 
@@ -39,13 +40,13 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  // Adds a new item to the top of the list
   void _addNewTransaction(Transaction newTx) {
     setState(() {
       _transactions.insert(0, newTx);
     });
   }
 
-  // 2. Updated remove function to REMEMBER the item
   void _removeTransaction(String id) {
     setState(() {
       final index = _transactions.indexWhere((tx) => tx.id == id);
@@ -57,12 +58,10 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  // 3. New function to RESTORE the item
   void _undoDelete() {
     setState(() {
       if (_recentlyDeletedTransaction != null && _recentlyDeletedIndex != null) {
         _transactions.insert(_recentlyDeletedIndex!, _recentlyDeletedTransaction!);
-        // Reset the variables
         _recentlyDeletedTransaction = null;
         _recentlyDeletedIndex = null;
       }
@@ -71,20 +70,17 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 1. Calculate Totals
     double income = 0;
     double expense = 0;
-
     for (final tx in _transactions) {
-      if (tx.isExpense) {
-        expense += tx.amount;
-      } else {
-        income += tx.amount;
-      }
+      if (tx.isExpense) expense += tx.amount;
+      else income += tx.amount;
     }
-
     const double openingBalance = 1000;
     final double totalBalance = openingBalance + income - expense;
 
+    // 2. Define Pages
     final List<Widget> pages = <Widget>[
       HomeScreen(
         transactions: _transactions,
@@ -92,9 +88,9 @@ class _MainScreenState extends State<MainScreen> {
         totalIncome: income,
         totalExpense: expense,
         onDelete: _removeTransaction,
-        onUndo: _undoDelete, // 4. Pass the undo function
+        onUndo: _undoDelete,
       ),
-      const WalletScreen(),
+      const WalletScreen(), 
       const StatsScreen(),
       const ProfileScreen(),
     ];
@@ -102,12 +98,15 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: pages[_selectedIndex],
+      
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
         selectedItemColor: const Color(0xFF2575FC),
         unselectedItemColor: Colors.grey,
+        showUnselectedLabels: false,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_rounded), label: 'Wallet'),
@@ -115,22 +114,30 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF2575FC),
-        child: const Icon(Icons.add_rounded),
-        onPressed: () async {
-          final newTransaction = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddTransactionScreen(),
-            ),
-          );
 
-          if (newTransaction != null) {
-            _addNewTransaction(newTransaction as Transaction);
-          }
-        },
-      ),
+      // 3. Floating Action Button (Opens AddTransactionScreen)
+      floatingActionButton: _selectedIndex == 0 
+        ? FloatingActionButton(
+            backgroundColor: const Color(0xFF2575FC),
+            shape: const CircleBorder(),
+            child: const Icon(Icons.add_rounded, color: Colors.white),
+            onPressed: () async {
+              // Open the Add Screen and wait for result
+              final newTransaction = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddTransactionScreen(),
+                ),
+              );
+
+              // If user saved a transaction, add it to the list
+              if (newTransaction != null && newTransaction is Transaction) {
+                _addNewTransaction(newTransaction);
+              }
+            },
+          )
+        : null, 
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }

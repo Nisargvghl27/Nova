@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart'; //
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -103,7 +104,34 @@ class ProfileScreen extends StatelessWidget {
 
             // 4. Log Out
             TextButton(
-              onPressed: () {},
+              onPressed: () async {
+                // Show confirmation dialog
+                bool? confirmLogout = await showDialog<bool>(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text('Logout'),
+                      content: const Text('Are you sure you want to log out?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (confirmLogout == true) {
+                  // Execute logout from AuthService
+                  await AuthService().logout();
+                  // No Navigator call needed here; AuthWrapper handles it
+                }
+              },
               child: const Text(
                 'Log Out',
                 style: TextStyle(

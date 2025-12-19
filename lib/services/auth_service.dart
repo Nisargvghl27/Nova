@@ -17,12 +17,21 @@ class AuthService {
       );
 
       final user = cred.user;
+
       if (user != null) {
+        // 🔹 Create Firestore user document
         await _createUserDocument(user);
+
+        // 🔹 Send email verification (EMAIL OTP LINK)
+        await user.sendEmailVerification();
+
+        // 🔹 IMPORTANT: logout until email is verified
+        await _auth.signOut();
       }
+
       return user;
-    } catch (e) {
-      rethrow;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(e.message);
     }
   }
 
@@ -36,16 +45,40 @@ class AuthService {
         email: email,
         password: password,
       );
-      return cred.user;
-    } catch (e) {
-      rethrow;
+
+      final user = cred.user;
+
+      if (user == null) {
+        throw Exception("Login failed");
+      }
+
+      // 🔄 Refresh user state
+      await user.reload();
+      final refreshedUser = _auth.currentUser!;
+
+      // 🔒 Block unverified users
+      if (!refreshedUser.emailVerified) {
+        await _auth.signOut();
+        throw Exception("Please verify your email before logging in.");
+      }
+
+      return refreshedUser;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  // ---------------- RESEND VERIFICATION EMAIL ----------------
+  Future<void> resendVerificationEmail() async {
+    final user = _auth.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
     }
   }
 
   // ---------------- LOGOUT ----------------
   Future<void> logout() async {
     try {
-      // This triggers the StreamBuilder in main.dart automatically
       await _auth.signOut();
     } catch (e) {
       print("Logout Error: $e");
@@ -68,5 +101,6 @@ class AuthService {
     });
   }
 
+  // ---------------- CURRENT USER ----------------
   User? get currentUser => _auth.currentUser;
 }

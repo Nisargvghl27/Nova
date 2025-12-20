@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -100,6 +101,47 @@ class AuthService {
       'totalExpense': 0.0,
     });
   }
+  // ---------------- GOOGLE SIGN IN ----------------
+Future<User?> signInWithGoogle() async {
+  try {
+    final GoogleSignIn googleSignIn = GoogleSignIn();
+
+    // Trigger Google Sign-In
+    final GoogleSignInAccount? googleUser =
+        await googleSignIn.signIn();
+
+    if (googleUser == null) {
+      return null; // user cancelled
+    }
+
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final userCredential =
+        await _auth.signInWithCredential(credential);
+
+    final user = userCredential.user;
+
+    if (user != null) {
+      // Create Firestore doc if first time
+      final doc =
+          await _firestore.collection('users').doc(user.uid).get();
+
+      if (!doc.exists) {
+        await _createUserDocument(user);
+      }
+    }
+
+    return user;
+  } on FirebaseAuthException catch (e) {
+    throw Exception(e.message);
+  }
+}
 
   // ---------------- CURRENT USER ----------------
   User? get currentUser => _auth.currentUser;

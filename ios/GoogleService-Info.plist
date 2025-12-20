@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>918046690152-dq11i22kjm0rk2la4fnhepb10j8d7gb6.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.918046690152-dq11i22kjm0rk2la4fnhepb10j8d7gb6</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>918046690152-k33j4v10kti1qpd3vi425et9j5ufqihp.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBczqmfR2QBekXOh56COj3NO3Rrs8mQ5vQ</string>
+	<key>GCM_SENDER_ID</key>
+	<string>918046690152</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.nova</string>
+	<key>PROJECT_ID</key>
+	<string>nova-f9f8b</string>
+	<key>STORAGE_BUCKET</key>
+	<string>nova-f9f8b.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:918046690152:ios:49cd4f71ca354e5111a4dd</string>
+</dict>
+</plist>

@@ -9,6 +9,7 @@ class Transaction {
   final bool isExpense;
   final IconData icon;
   final Color color;
+  final String merchant;
 
   Transaction({
     required this.id,
@@ -19,5 +20,6 @@ class Transaction {
     required this.isExpense,
     required this.icon,
     required this.color,
+    required this.merchant,
   });
 }

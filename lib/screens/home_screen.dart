@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -24,23 +25,32 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: CustomScrollView(
-        // Slivers are much faster than SingleChildScrollView + shrinkWrap
         slivers: [
+          // 1. Header Section (Balance Card)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(top: 60, left: 20, right: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
+                  // Profile Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: const [
-                          Text('Good Morning,', style: TextStyle(fontSize: 14, color: Colors.grey)),
-                          Text('Alex Johnson', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                          Text(
+                            'Good Morning,',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
+                          Text(
+                            'Alex Johnson',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                       const Icon(Icons.notifications_none_rounded),
@@ -53,7 +63,9 @@ class HomeScreen extends StatelessWidget {
                     height: 200,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF6A11CB), Color(0xFF2575FC)]),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+                      ),
                       borderRadius: BorderRadius.circular(25),
                     ),
                     child: Padding(
@@ -62,20 +74,44 @@ class HomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total Balance', style: TextStyle(color: Colors.white70)),
+                          const Text(
+                            'Total Balance',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          // ✅ CHANGED TO 'Rs'
                           Text(
-                            '\$${totalBalance.toStringAsFixed(2)}',
-                            style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
+                            'Rs ${totalBalance.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 36,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Row(
                             children: [
-                              const Icon(Icons.arrow_upward, color: Colors.greenAccent, size: 18),
+                              const Icon(
+                                Icons.arrow_upward,
+                                color: Colors.greenAccent,
+                                size: 18,
+                              ),
                               const SizedBox(width: 5),
-                              Text('+ \$${totalIncome.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white)),
+                              // ✅ CHANGED TO 'Rs'
+                              Text(
+                                '+ Rs ${totalIncome.toStringAsFixed(0)}',
+                                style: const TextStyle(color: Colors.white),
+                              ),
                               const SizedBox(width: 20),
-                              const Icon(Icons.arrow_downward, color: Colors.redAccent, size: 18),
+                              const Icon(
+                                Icons.arrow_downward,
+                                color: Colors.redAccent,
+                                size: 18,
+                              ),
                               const SizedBox(width: 5),
-                              Text('- \$${totalExpense.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white)),
+                              // ✅ CHANGED TO 'Rs'
+                              Text(
+                                '- Rs ${totalExpense.toStringAsFixed(0)}',
+                                style: const TextStyle(color: Colors.white),
+                              ),
                             ],
                           ),
                         ],
@@ -83,54 +119,80 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  const Text('Recent Transactions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Recent Transactions',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 10),
                 ],
               ),
             ),
           ),
 
-          // List Logic using SliverList for high performance
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                  final tx = transactions[index];
-                  return Dismissible(
-                    key: Key(tx.id), // Use ID as key, not UniqueKey()
-                    direction: DismissDirection.endToStart,
-                    onDismissed: (direction) {
-                      onDelete(tx.id);
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${tx.title} deleted'),
-                          action: SnackBarAction(
-                            label: 'UNDO',
-                            textColor: Colors.orange,
-                            onPressed: onUndo,
-                          ),
-                        ),
-                      );
-                    },
-                    background: Container(
-                      margin: const EdgeInsets.only(bottom: 15),
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade400,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(Icons.delete, color: Colors.white),
+          // 2. Transaction List OR Empty State
+          if (transactions.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.monetization_on_outlined,
+                      size: 80,
+                      color: Colors.grey[300],
                     ),
-                    child: _transactionTile(tx),
-                  );
-                },
-                childCount: transactions.length,
+                    const SizedBox(height: 20),
+                    Text(
+                      "No transactions yet!",
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final tx = transactions[index];
+                    return Dismissible(
+                      key: Key(tx.id),
+                      direction: DismissDirection.endToStart,
+                      onDismissed: (direction) {
+                        onDelete(tx.id);
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${tx.title} deleted'),
+                            action: SnackBarAction(
+                              label: 'UNDO',
+                              textColor: Colors.orange,
+                              onPressed: onUndo,
+                            ),
+                          ),
+                        );
+                      },
+                      background: Container(
+                        margin: const EdgeInsets.only(bottom: 15),
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade400,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      child: _transactionTile(tx),
+                    );
+                  },
+                  childCount: transactions.length,
+                ),
               ),
             ),
-          ),
+
           // Bottom padding for FAB
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
@@ -164,13 +226,20 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(tx.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text("${tx.date.day}/${tx.date.month}", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(
+                  tx.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  DateFormat.MMMd().format(tx.date), // Requires 'intl' import
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
               ],
             ),
           ),
+          // ✅ CHANGED TO 'Rs'
           Text(
-            "${tx.isExpense ? '-' : '+'} \$${tx.amount.toStringAsFixed(2)}",
+            "${tx.isExpense ? '-' : '+'} Rs ${tx.amount.toStringAsFixed(2)}",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: tx.isExpense ? Colors.red : Colors.green,

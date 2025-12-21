@@ -208,7 +208,7 @@ class ProfileScreen extends StatelessWidget {
             Switch(
               value: true,
               onChanged: (val) {},
-              activeColor: const Color(0xFF2575FC),
+              activeThumbColor: const Color(0xFF2575FC),
             )
           else
             const Icon(Icons.arrow_forward_ios_rounded,

@@ -77,11 +77,15 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SplashScreen();
         }
-        // 2. If user is logged in, show Main Screen
-        if (snapshot.hasData) {
+
+        final user = snapshot.data;
+
+        // 2. User logged in AND email verified → MainScreen
+        if (user != null && user.emailVerified) {
           return const MainScreen();
         }
-        // 3. Otherwise, show Login Screen
+
+        // 3. User not logged in OR email not verified → Login
         return const LoginScreen();
       },
     );

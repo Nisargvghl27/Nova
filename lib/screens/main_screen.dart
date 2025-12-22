@@ -226,7 +226,7 @@ class _MainScreenState extends State<MainScreen> {
     // 1. Calculate Totals efficiently
     double income = 0;
     double expense = 0;
-    for (var tx in _transactions) {
+    for (final tx in _transactions) {
       if (tx.isExpense) {
         expense += tx.amount;
       } else {

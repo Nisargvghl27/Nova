@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/auth_service.dart';
 import 'signup_screen.dart';
-// Note: MainScreen import removed because AuthWrapper handles navigation now
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,34 +14,48 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
+  bool _googleLoading = false;
 
   Future<void> _login() async {
-    // 1. Validate Form
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
 
     try {
-      // 2. Perform Login
       await AuthService().login(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-
-      // NOTE: We do NOT need Navigator.push here.
-      // The AuthWrapper in main.dart will see the user logged in
-      // and show MainScreen automatically.
-
+      // AuthWrapper handles navigation
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
+          content: Text(e.toString().replaceAll("Exception: ", "")),
           backgroundColor: Colors.redAccent,
         ),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _googleLogin() async {
+    setState(() => _googleLoading = true);
+
+    try {
+      await AuthService().signInWithGoogle();
+      // AuthWrapper will redirect automatically
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll("Exception: ", "")),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _googleLoading = false);
     }
   }
 
@@ -57,7 +70,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // Using a GestureDetector to dismiss keyboard on tap outside
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
@@ -89,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 100,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withAlpha(40), // More stable than withValues
+                              color: Colors.white.withAlpha(40),
                               border: Border.all(
                                 color: Colors.white.withAlpha(150),
                                 width: 1.5,
@@ -196,38 +208,44 @@ class _LoginScreenState extends State<LoginScreen> {
                             colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
                           ),
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF2575FC).withAlpha(80),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
                         ),
                         child: ElevatedButton(
                           onPressed: _loading ? null : _login,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
                           ),
                           child: _loading
-                              ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
-                          )
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                )
                               : const Text(
-                            'LOGIN',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
+                                  'LOGIN',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // GOOGLE SIGN IN BUTTON
+                      OutlinedButton.icon(
+                        onPressed: _googleLoading ? null : _googleLogin,
+                        icon: const Icon(Icons.login),
+                        label: _googleLoading
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text("Continue with Google"),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
                         ),
                       ),
 

@@ -12,7 +12,20 @@
           "package_name": "com.example.nova"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "918046690152-k33j4v10kti1qpd3vi425et9j5ufqihp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.nova",
+            "certificate_hash": "fd8071bda6f701cb0600a42cc37d586f7c0f3a80"
+          }
+        },
+        {
+          "client_id": "918046690152-qhg6fim4phd2f8ie8o05f3kj35en6kv6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDhqqje8X3dUUBvmnCmMqeFWSgwq_-_xac"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "918046690152-qhg6fim4phd2f8ie8o05f3kj35en6kv6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "918046690152-dq11i22kjm0rk2la4fnhepb10j8d7gb6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.nova"
+              }
+            }
+          ]
         }
       }
     }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '/../models/transaction_model.dart';
+import '../models/transaction_model.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
@@ -13,25 +13,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final TextEditingController _noteController = TextEditingController();
 
   String _selectedCategory = 'Food';
-  bool _isExpense = true; 
+  bool _isExpense = true;
 
-  // 1. Defined two separate lists for categories
   final List<String> _expenseCategories = [
-    'Food',
-    'Transport',
-    'Shopping',
-    'Entertainment',
-    'Bills',
-    'Health'
+    'Food', 'Transport', 'Shopping', 'Entertainment', 'Bills', 'Health'
   ];
 
   final List<String> _incomeCategories = [
-    'Salary',
-    'Business',
-    'Investment',
-    'Gift',
-    'Freelance',
-    'Other'
+    'Salary', 'Business', 'Investment', 'Gift', 'Freelance', 'Other'
   ];
 
   @override
@@ -43,8 +32,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 2. Determine which list to show based on the toggle
-    final List<String> currentCategories = _isExpense ? _expenseCategories : _incomeCategories;
+    final List<String> currentCategories =
+        _isExpense ? _expenseCategories : _incomeCategories;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -67,7 +56,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Toggle Switch (Income / Expense)
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
@@ -83,21 +71,22 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 30),
 
-              // Amount Input
               const Text(
                 'Amount',
                 style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
               TextField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
                 decoration: InputDecoration(
-                  prefixText: '\$ ',
+                  // ✅ CHANGED TO 'Rs'
+                  prefixText: 'Rs ',
                   prefixStyle: const TextStyle(
                     fontSize: 40,
                     fontWeight: FontWeight.bold,
@@ -108,14 +97,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   hintStyle: TextStyle(color: Colors.grey[300]),
                 ),
               ),
-              
+
               const SizedBox(height: 30),
 
-              // Category Selection
               const Text(
                 'Category',
                 style: TextStyle(
-                    color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 15),
               Wrap(
@@ -125,11 +115,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   return ChoiceChip(
                     label: Text(category),
                     selected: _selectedCategory == category,
-                    selectedColor: _isExpense ? const Color(0xFF2575FC) : Colors.green, // Blue for expense, Green for income
+                    selectedColor: _isExpense
+                        ? const Color(0xFF2575FC)
+                        : Colors.green,
                     labelStyle: TextStyle(
-                      color: _selectedCategory == category ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold
-                    ),
+                        color: _selectedCategory == category
+                            ? Colors.white
+                            : Colors.black,
+                        fontWeight: FontWeight.bold),
                     backgroundColor: Colors.white,
                     onSelected: (bool selected) {
                       setState(() {
@@ -142,11 +135,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 30),
 
-              // Note Input
               const Text(
                 'Note',
                 style: TextStyle(
-                    color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -165,20 +159,22 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 40),
 
-              // Save Button
               Container(
                 width: double.infinity,
                 height: 55,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: _isExpense 
-                      ? [const Color(0xFF6A11CB), const Color(0xFF2575FC)] // Blue gradient for expense
-                      : [Colors.green.shade400, Colors.green.shade700],    // Green gradient for income
+                    colors: _isExpense
+                        ? [const Color(0xFF6A11CB), const Color(0xFF2575FC)]
+                        : [Colors.green.shade400, Colors.green.shade700],
                   ),
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
-                      color: (_isExpense ? const Color(0xFF2575FC) : Colors.green).withOpacity(0.3),
+                      color: (_isExpense
+                              ? const Color(0xFF2575FC)
+                              : Colors.green)
+                          .withOpacity(0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),
@@ -186,21 +182,23 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ),
                 child: ElevatedButton(
                   onPressed: () {
-                    if (_amountController.text.isEmpty) {
-                       return; 
-                    }
+                    if (_amountController.text.isEmpty) return;
 
-                    final double amount = double.tryParse(_amountController.text) ?? 0.0;
-                    
+                    final double amount =
+                        double.tryParse(_amountController.text) ?? 0.0;
+
                     final newTx = Transaction(
                       id: DateTime.now().toString(),
-                      title: _noteController.text.isEmpty ? _selectedCategory : _noteController.text,
+                      title: _noteController.text.isEmpty
+                          ? _selectedCategory
+                          : _noteController.text,
                       amount: amount,
                       date: DateTime.now(),
                       category: _selectedCategory,
-                      isExpense: _isExpense, 
-                      icon: _getIconForCategory(_selectedCategory), 
-                      color: _getColorForCategory(_selectedCategory, _isExpense), 
+                      isExpense: _isExpense,
+                      icon: _getIconForCategory(_selectedCategory),
+                      color: _getColorForCategory(_selectedCategory, _isExpense),
+                      merchant: '',
                     );
 
                     Navigator.pop(context, newTx);
@@ -236,10 +234,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         onTap: () {
           setState(() {
             _isExpense = isExpenseBtn;
-            // 3. IMPORTANT: Reset selected category when switching!
-            // If switching to Expense, pick the first expense item.
-            // If switching to Income, pick the first income item.
-            _selectedCategory = isExpenseBtn ? _expenseCategories[0] : _incomeCategories[0];
+            _selectedCategory =
+                isExpenseBtn ? _expenseCategories[0] : _incomeCategories[0];
           });
         },
         child: Container(
@@ -272,16 +268,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   IconData _getIconForCategory(String category) {
-    // 4. Added Income Icons
     switch (category) {
-      // Expense
       case 'Food': return Icons.fastfood_rounded;
       case 'Transport': return Icons.directions_car_rounded;
       case 'Shopping': return Icons.shopping_bag_rounded;
       case 'Entertainment': return Icons.sports_esports_rounded;
       case 'Bills': return Icons.receipt_long_rounded;
       case 'Health': return Icons.medical_services_rounded;
-      // Income
       case 'Salary': return Icons.attach_money_rounded;
       case 'Business': return Icons.business_center_rounded;
       case 'Investment': return Icons.trending_up_rounded;
@@ -292,9 +285,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   Color _getColorForCategory(String category, bool isExpense) {
-    // 5. Income usually uses Green, Expense uses varied colors
-    if (!isExpense) return Colors.green; 
-
+    if (!isExpense) return Colors.green;
     switch (category) {
       case 'Food': return Colors.orange;
       case 'Transport': return Colors.blue;

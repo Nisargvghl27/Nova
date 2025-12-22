@@ -234,18 +234,52 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 20),
 
                       // GOOGLE SIGN IN BUTTON
-                      OutlinedButton.icon(
-                        onPressed: _googleLoading ? null : _googleLogin,
-                        icon: const Icon(Icons.login),
-                        label: _googleLoading
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text("Continue with Google"),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
+                      Container(
+                        height: 55,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white,
+                        ),
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side:
+                                BorderSide.none, // We use Container for border
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _googleLoading ? null : _googleLogin,
+                          child: _googleLoading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF2575FC), // Match app theme
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // Official Google Logo
+                                    Image.asset(
+                                      'assets/images/google_logo.png',
+                                      height: 24,
+                                      width: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      "Continue with Google",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
 

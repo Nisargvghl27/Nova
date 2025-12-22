@@ -12,13 +12,9 @@ class WalletScreen extends StatelessWidget {
         elevation: 0,
         title: const Text(
           'My Wallet',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
-        centerTitle: false,
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert, color: Colors.black),
@@ -31,221 +27,173 @@ class WalletScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Credit Card 1 (Main)
-            _buildCreditCard(
-              color1: const Color(0xFF6A11CB),
-              color2: const Color(0xFF2575FC),
-              cardNumber: '**** **** **** 4242',
-              cardHolder: 'Alex Johnson',
-              expiry: '12/25',
-              balance: '\$14,235.00',
-            ),
+            // 1. The Virtual Card
+            _buildCreditCard(),
             
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
 
-            // 2. Credit Card 2 (Secondary)
-            _buildCreditCard(
-              color1: const Color(0xFFFA709A),
-              color2: const Color(0xFFFE5196),
-              cardNumber: '**** **** **** 8899',
-              cardHolder: 'Alex Johnson',
-              expiry: '08/24',
-              balance: '\$3,500.50',
+            // 2. Action Buttons (Send, Request, Top Up)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildActionButton(Icons.arrow_upward, 'Send'),
+                _buildActionButton(Icons.arrow_downward, 'Request'),
+                _buildActionButton(Icons.add, 'Top Up'),
+                _buildActionButton(Icons.grid_view_rounded, 'More'),
+              ],
             ),
 
             const SizedBox(height: 30),
 
-            // 3. Add New Card Button
-            GestureDetector(
-              onTap: () {
-                // Handle add card
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300, width: 2),
-                  borderRadius: BorderRadius.circular(20),
-                  color: Colors.transparent,
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add_circle_outline_rounded, color: Colors.grey),
-                    SizedBox(width: 10),
-                    Text(
-                      'Add New Card',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            // 3. Recent Activity Header
+            const Text(
+              'Linked Accounts',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 15),
+
+            // 4. Bank List
+            _buildBankItem("HDFC Bank", "**** 8921", "Rs 24,500.00", Colors.blue[900]!),
+            _buildBankItem("SBI Bank", "**** 1234", "Rs 8,250.50", Colors.blue[600]!),
+            _buildBankItem("Cash", "Wallet", "Rs 1,200.00", Colors.green),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCreditCard({
-    required Color color1,
-    required Color color2,
-    required String cardNumber,
-    required String cardHolder,
-    required String expiry,
-    required String balance,
-  }) {
+  Widget _buildCreditCard() {
     return Container(
+      height: 200,
       width: double.infinity,
-      height: 220,
+      padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color1, color2],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2575FC), Color(0xFF6A11CB)], // Beautiful Blue-Purple
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: color2.withOpacity(0.4),
-            blurRadius: 20,
+            color: const Color(0xFF2575FC).withOpacity(0.4),
+            blurRadius: 15,
             offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Background Design Circles
-          Positioned(
-            top: -30,
-            right: -30,
-            child: Container(
-              height: 150,
-              width: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Balance',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
+              Icon(Icons.credit_card, color: Colors.white70),
+            ],
+          ),
+          const Text(
+            'Rs 45,250.00',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          Positioned(
-            bottom: -50,
-            left: -20,
-            child: Container(
-              height: 150,
-              width: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '**** **** **** 8921',
+                style: TextStyle(color: Colors.white70, fontSize: 16, letterSpacing: 1.2),
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  '09/25',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              )
+            ],
           ),
-          // Card Content
-          Padding(
-            padding: const EdgeInsets.all(25.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Debit Card',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 16,
-                      ),
-                    ),
-                    const Icon(Icons.wifi, color: Colors.white),
-                  ],
-                ),
-                Text(
-                  cardNumber,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    letterSpacing: 2,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'CARD HOLDER',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 10,
-                          ),
-                        ),
-                        Text(
-                          cardHolder,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'EXPIRES',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 10,
-                          ),
-                        ),
-                        Text(
-                          expiry,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // MasterCard Logo Placeholder (Two circles)
-                    SizedBox(
-                      height: 30,
-                      width: 50,
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.5),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          Positioned(
-                            left: 20,
-                            child: Container(
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.5),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(IconData icon, String label) {
+    return Column(
+      children: [
+        Container(
+          height: 60,
+          width: 60,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Icon(icon, color: const Color(0xFF2575FC), size: 28),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
+        )
+      ],
+    );
+  }
+
+  Widget _buildBankItem(String name, String number, String amount, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 50,
+            width: 50,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: Icon(Icons.account_balance, color: color),
+          ),
+          const SizedBox(width: 15),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              Text(
+                number,
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            amount,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
         ],
       ),

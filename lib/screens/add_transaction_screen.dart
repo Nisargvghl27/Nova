@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/transaction_model.dart';
+import '../services/transaction_service.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
@@ -16,11 +18,21 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   bool _isExpense = true;
 
   final List<String> _expenseCategories = [
-    'Food', 'Transport', 'Shopping', 'Entertainment', 'Bills', 'Health'
+    'Food',
+    'Transport',
+    'Shopping',
+    'Entertainment',
+    'Bills',
+    'Health',
   ];
 
   final List<String> _incomeCategories = [
-    'Salary', 'Business', 'Investment', 'Gift', 'Freelance', 'Other'
+    'Salary',
+    'Business',
+    'Investment',
+    'Gift',
+    'Freelance',
+    'Other',
   ];
 
   @override
@@ -56,6 +68,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ================= EXPENSE / INCOME TOGGLE =================
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
@@ -69,8 +82,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 30),
 
+              // ================= AMOUNT =================
               const Text(
                 'Amount',
                 style: TextStyle(color: Colors.grey, fontSize: 16),
@@ -82,15 +97,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
                 ),
                 decoration: InputDecoration(
-                  // ✅ CHANGED TO 'Rs'
                   prefixText: 'Rs ',
                   prefixStyle: const TextStyle(
                     fontSize: 40,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
                   ),
                   border: InputBorder.none,
                   hintText: '0.00',
@@ -100,12 +112,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 30),
 
+              // ================= CATEGORY =================
               const Text(
                 'Category',
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold),
+                style:
+                    TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 15),
               Wrap(
@@ -119,12 +130,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ? const Color(0xFF2575FC)
                         : Colors.green,
                     labelStyle: TextStyle(
-                        color: _selectedCategory == category
-                            ? Colors.white
-                            : Colors.black,
-                        fontWeight: FontWeight.bold),
+                      color: _selectedCategory == category
+                          ? Colors.white
+                          : Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
                     backgroundColor: Colors.white,
-                    onSelected: (bool selected) {
+                    onSelected: (_) {
                       setState(() {
                         _selectedCategory = category;
                       });
@@ -135,12 +147,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 30),
 
+              // ================= NOTE =================
               const Text(
                 'Note',
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold),
+                style:
+                    TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -159,14 +170,21 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 40),
 
+              // ================= SAVE BUTTON =================
               Container(
                 width: double.infinity,
                 height: 55,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: _isExpense
-                        ? [const Color(0xFF6A11CB), const Color(0xFF2575FC)]
-                        : [Colors.green.shade400, Colors.green.shade700],
+                        ? const [
+                            Color(0xFF6A11CB),
+                            Color(0xFF2575FC),
+                          ]
+                        : [
+                            Colors.green.shade400,
+                            Colors.green.shade700,
+                          ],
                   ),
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
@@ -174,34 +192,35 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       color: (_isExpense
                               ? const Color(0xFF2575FC)
                               : Colors.green)
-                          .withOpacity(0.3),
+                          .withAlpha(80),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),
                   ],
                 ),
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_amountController.text.isEmpty) return;
 
                     final double amount =
                         double.tryParse(_amountController.text) ?? 0.0;
 
-                    final newTx = Transaction(
-                      id: DateTime.now().toString(),
+                    final newTx = TransactionModel(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
                       title: _noteController.text.isEmpty
                           ? _selectedCategory
                           : _noteController.text,
                       amount: amount,
                       date: DateTime.now(),
                       category: _selectedCategory,
-                      isExpense: _isExpense,
-                      icon: _getIconForCategory(_selectedCategory),
-                      color: _getColorForCategory(_selectedCategory, _isExpense),
-                      merchant: '',
+                      type: _isExpense ? 'debit' : 'credit',
+                      source: 'manual',
+                      note: _noteController.text,
+                      createdAt: Timestamp.now(),
                     );
 
-                    Navigator.pop(context, newTx);
+                    await TransactionService().addTransaction(newTx);
+                    Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
@@ -227,8 +246,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
   }
 
+  // ================= TOGGLE BUTTON =================
+
   Widget _buildToggleButton(String text, bool isExpenseBtn) {
-    bool isSelected = _isExpense == isExpenseBtn;
+    final bool isSelected = _isExpense == isExpenseBtn;
+
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -246,8 +268,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
+                      color: Colors.grey.withAlpha(25),
                       blurRadius: 5,
                     )
                   ]
@@ -265,35 +286,5 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         ),
       ),
     );
-  }
-
-  IconData _getIconForCategory(String category) {
-    switch (category) {
-      case 'Food': return Icons.fastfood_rounded;
-      case 'Transport': return Icons.directions_car_rounded;
-      case 'Shopping': return Icons.shopping_bag_rounded;
-      case 'Entertainment': return Icons.sports_esports_rounded;
-      case 'Bills': return Icons.receipt_long_rounded;
-      case 'Health': return Icons.medical_services_rounded;
-      case 'Salary': return Icons.attach_money_rounded;
-      case 'Business': return Icons.business_center_rounded;
-      case 'Investment': return Icons.trending_up_rounded;
-      case 'Gift': return Icons.card_giftcard_rounded;
-      case 'Freelance': return Icons.computer_rounded;
-      default: return Icons.category_rounded;
-    }
-  }
-
-  Color _getColorForCategory(String category, bool isExpense) {
-    if (!isExpense) return Colors.green;
-    switch (category) {
-      case 'Food': return Colors.orange;
-      case 'Transport': return Colors.blue;
-      case 'Shopping': return Colors.purple;
-      case 'Entertainment': return Colors.red;
-      case 'Bills': return Colors.indigo;
-      case 'Health': return Colors.teal;
-      default: return Colors.grey;
-    }
   }
 }

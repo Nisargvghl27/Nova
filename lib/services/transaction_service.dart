@@ -17,14 +17,39 @@ class TransactionService {
   CollectionReference<Map<String, dynamic>> get _txRef =>
       _firestore.collection('users').doc(_uid).collection('transactions');
 
-  // 🔹 ADD TRANSACTION
+  // 🔹 CHECK DUPLICATE USING FINGERPRINT
+  Future<bool> _exists(TransactionModel tx) async {
+    final snapshot = await _txRef
+        .where('fingerprint', isEqualTo: tx.fingerprint)
+        .limit(1)
+        .get();
+
+    return snapshot.docs.isNotEmpty;
+  }
+
+  // 🔹 ADD TRANSACTION (WITH DUPLICATE PROTECTION)
   Future<void> addTransaction(TransactionModel tx) async {
+    final isDuplicate = await _exists(tx);
+
+    if (isDuplicate) {
+      // silently skip duplicate
+      return;
+    }
+
     await _txRef.add(tx.toMap());
   }
 
   // 🔹 DELETE TRANSACTION
   Future<void> deleteTransaction(String txId) async {
     await _txRef.doc(txId).delete();
+  }
+
+  // 🔹 UPDATE TRANSACTION
+  Future<void> updateTransaction(
+    String txId,
+    Map<String, dynamic> data,
+  ) async {
+    await _txRef.doc(txId).update(data);
   }
 
   // 🔹 STREAM ALL TRANSACTIONS (REAL-TIME)
@@ -38,14 +63,6 @@ class TransactionService {
           .toList();
     });
   }
-  // 🔹 UPDATE TRANSACTION
-  Future<void> updateTransaction(
-    String txId,
-    Map<String, dynamic> data,
-  ) async {
-    await _txRef.doc(txId).update(data);
-  }
-
 
   // 🔹 ONE-TIME FETCH (OPTIONAL)
   Future<List<TransactionModel>> fetchTransactions() async {

@@ -412,7 +412,7 @@ class _CsvImportDialogState extends State<_CsvImportDialog> {
                 icon: const Icon(Icons.upload_file),
                 label: const Text('Select CSV File'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2575FC),
+                  backgroundColor: const Color.fromARGB(255, 167, 183, 211),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),

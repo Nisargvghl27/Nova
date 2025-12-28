@@ -10,6 +10,7 @@ class TransactionModel {
   final String source;       // manual | csv | sms
   final String note;         // optional
   final Timestamp createdAt;
+  final String fingerprint; // 🔹 NEW
 
   TransactionModel({
     required this.id,
@@ -21,10 +22,29 @@ class TransactionModel {
     required this.source,
     required this.note,
     required this.createdAt,
-  });
+    String? fingerprint,
+  }) : fingerprint = fingerprint ?? _generateFingerprint(
+          date: date,
+          amount: amount,
+          title: title,
+        );
+
+  /// 🔹 Generate fingerprint (date + amount + title)
+  static String _generateFingerprint({
+    required DateTime date,
+    required double amount,
+    required String title,
+  }) {
+    return '${date.toIso8601String().substring(0, 10)}'
+        '_${amount.toStringAsFixed(2)}'
+        '_${title.toLowerCase().trim()}';
+  }
 
   /// 🔹 Convert Firestore → Model
-  factory TransactionModel.fromMap(String id, Map<String, dynamic> data) {
+  factory TransactionModel.fromMap(
+    String id,
+    Map<String, dynamic> data,
+  ) {
     return TransactionModel(
       id: id,
       title: data['title'],
@@ -35,6 +55,7 @@ class TransactionModel {
       source: data['source'],
       note: data['note'] ?? '',
       createdAt: data['createdAt'],
+      fingerprint: data['fingerprint'], // 🔹 READ FROM FIRESTORE
     );
   }
 
@@ -49,6 +70,7 @@ class TransactionModel {
       'source': source,
       'note': note,
       'createdAt': createdAt,
+      'fingerprint': fingerprint, // 🔹 STORE IN FIRESTORE
     };
   }
 }

@@ -4,6 +4,7 @@ import 'wallet_screen.dart';
 import 'stats_screen.dart';
 import 'profile_screen.dart';
 import 'add_transaction_screen.dart';
+import 'transaction_screen.dart';
 import '../models/transaction_model.dart';
 import '../services/transaction_service.dart';
 
@@ -50,7 +51,6 @@ class _MainScreenState extends State<MainScreen> {
         // ---------------- DATA ----------------
         final List<TransactionModel> transactions = snapshot.data ?? [];
 
-        // Calculate totals
         double income = 0;
         double expense = 0;
 
@@ -65,6 +65,7 @@ class _MainScreenState extends State<MainScreen> {
         final double totalBalance = income - expense;
 
         final List<Widget> pages = [
+          // 🏠 HOME
           HomeScreen(
             transactions: transactions,
             totalBalance: totalBalance,
@@ -72,10 +73,23 @@ class _MainScreenState extends State<MainScreen> {
             totalExpense: expense,
             onDelete: (id) =>
                 TransactionService().deleteTransaction(id),
-            onUndo: () {}, // optional / future use
+            onUndo: () {},
           ),
+
+          // 📄 TRANSACTIONS (NEWHook: search, filters, csv, edit)
+          TransactionsScreen(
+            transactions: transactions,
+            onDelete: (id) =>
+                TransactionService().deleteTransaction(id),
+          ),
+
+          // 💼 WALLET
           WalletScreen(transactions: transactions),
+
+          // 📊 STATS
           StatsScreen(transactions: transactions),
+
+          // 👤 PROFILE
           const ProfileScreen(),
         ];
 
@@ -85,6 +99,7 @@ class _MainScreenState extends State<MainScreen> {
             index: _selectedIndex,
             children: pages,
           ),
+
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
@@ -96,6 +111,10 @@ class _MainScreenState extends State<MainScreen> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.home_rounded),
                 label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.list_alt_rounded),
+                label: 'Transactions',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.account_balance_wallet_rounded),
@@ -111,7 +130,9 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ],
           ),
-          floatingActionButton: _selectedIndex == 0
+
+          floatingActionButton: _selectedIndex == 0 ||
+                  _selectedIndex == 1
               ? FloatingActionButton(
                   backgroundColor: const Color(0xFF2575FC),
                   child:
@@ -126,6 +147,7 @@ class _MainScreenState extends State<MainScreen> {
                   },
                 )
               : null,
+
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerDocked,
         );

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
-import 'add_transaction_screen.dart';
 import 'edit_transaction_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -37,7 +36,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   List<TransactionModel> get _filteredTransactions {
     List<TransactionModel> list = widget.transactions;
 
-    // 🔍 Search by title
+    // 🔍 Search
     if (_searchQuery.isNotEmpty) {
       list = list
           .where((tx) =>
@@ -45,19 +44,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           .toList();
     }
 
-    // 🏷 Filter by category
+    // 🏷 Category
     if (_selectedCategory != 'All') {
-      list =
-          list.where((tx) => tx.category == _selectedCategory).toList();
+      list = list.where((tx) => tx.category == _selectedCategory).toList();
     }
 
-    // 📅 Filter by date range
+    // 📅 Date range
     if (_dateRange != null) {
       list = list.where((tx) {
-        return tx.date.isAfter(_dateRange!.start
-                .subtract(const Duration(days: 1))) &&
+        return tx.date.isAfter(
+              _dateRange!.start.subtract(const Duration(days: 1)),
+            ) &&
             tx.date.isBefore(
-                _dateRange!.end.add(const Duration(days: 1)));
+              _dateRange!.end.add(const Duration(days: 1)),
+            );
       }).toList();
     }
 
@@ -76,6 +76,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
+  void _clearFilters() {
+    setState(() {
+      _searchQuery = '';
+      _selectedCategory = 'All';
+      _dateRange = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,12 +96,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             icon: const Icon(Icons.date_range),
             onPressed: _pickDateRange,
           ),
+          IconButton(
+            icon: const Icon(Icons.clear),
+            onPressed: _clearFilters,
+            tooltip: 'Clear filters',
+          ),
         ],
       ),
-
       body: Column(
         children: [
-          // 🔍 SEARCH BAR
+          // 🔍 SEARCH
           Padding(
             padding: const EdgeInsets.all(15),
             child: TextField(
@@ -120,7 +132,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               children: _categories.map((cat) {
-                final bool selected = _selectedCategory == cat;
+                final selected = _selectedCategory == cat;
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: ChoiceChip(
@@ -142,7 +154,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
           const SizedBox(height: 10),
 
-          // 📋 TRANSACTION LIST
+          // 📋 LIST
           Expanded(
             child: _filteredTransactions.isEmpty
                 ? const Center(
@@ -160,8 +172,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       return Dismissible(
                         key: Key(tx.id),
                         direction: DismissDirection.endToStart,
-                        onDismissed: (_) =>
-                            widget.onDelete(tx.id),
+                        onDismissed: (_) {
+                          widget.onDelete(tx.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text('${tx.title} deleted'),
+                              duration:
+                                  const Duration(seconds: 2),
+                            ),
+                          );
+                        },
                         background: Container(
                           alignment: Alignment.centerRight,
                           padding:
@@ -196,7 +217,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
-  // ================= TRANSACTION TILE =================
+  // ================= TILE =================
 
   Widget _transactionTile(TransactionModel tx) {
     final bool isDebit = tx.type == 'debit';
@@ -229,7 +250,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  DateFormat.MMMd().format(tx.date),
+                  DateFormat('MMM dd, yyyy').format(tx.date),
                   style: const TextStyle(
                       fontSize: 12, color: Colors.grey),
                 ),

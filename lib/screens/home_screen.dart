@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/transaction_model.dart';
-import 'edit_transaction_screen.dart';
-import '../services/csv_import_service.dart';
 import '../services/transaction_service.dart';
+
+import 'edit_transaction_screen.dart';
+import 'dialogs/csv_import_dialog.dart';
+import 'paste_sms_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<TransactionModel> transactions;
@@ -42,18 +45,24 @@ class HomeScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Good Morning,',
-                              style: TextStyle(fontSize: 14, color: Colors.grey)),
+                          Text(
+                            'Good Morning,',
+                            style:
+                                TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
                           Text(
                             'Alex Johnson',
                             style: TextStyle(
-                                fontSize: 24, fontWeight: FontWeight.bold),
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
                       Icon(Icons.notifications_none_rounded),
                     ],
                   ),
+
                   const SizedBox(height: 30),
 
                   // ================= BALANCE CARD =================
@@ -71,28 +80,35 @@ class HomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total Balance',
-                              style: TextStyle(color: Colors.white70)),
+                          const Text(
+                            'Total Balance',
+                            style: TextStyle(color: Colors.white70),
+                          ),
                           Text(
                             'Rs ${totalBalance.toStringAsFixed(2)}',
                             style: const TextStyle(
-                                fontSize: 36,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
+                              fontSize: 36,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Row(
                             children: [
                               const Icon(Icons.arrow_upward,
                                   color: Colors.greenAccent, size: 18),
                               const SizedBox(width: 5),
-                              Text('+ Rs ${totalIncome.toStringAsFixed(0)}',
-                                  style: const TextStyle(color: Colors.white)),
+                              Text(
+                                '+ Rs ${totalIncome.toStringAsFixed(0)}',
+                                style: const TextStyle(color: Colors.white),
+                              ),
                               const SizedBox(width: 20),
                               const Icon(Icons.arrow_downward,
                                   color: Colors.redAccent, size: 18),
                               const SizedBox(width: 5),
-                              Text('- Rs ${totalExpense.toStringAsFixed(0)}',
-                                  style: const TextStyle(color: Colors.white)),
+                              Text(
+                                '- Rs ${totalExpense.toStringAsFixed(0)}',
+                                style: const TextStyle(color: Colors.white),
+                              ),
                             ],
                           ),
                         ],
@@ -102,14 +118,15 @@ class HomeScreen extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // ================= CSV IMPORT CARD =================
-                  _importCsvCard(context),
+                  // ================= IMPORT OPTIONS =================
+                  _importOptions(context),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 25),
 
                   const Text(
                     'Recent Transactions',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
                 ],
@@ -128,8 +145,10 @@ class HomeScreen extends StatelessWidget {
                     Icon(Icons.monetization_on_outlined,
                         size: 80, color: Colors.grey[300]),
                     const SizedBox(height: 20),
-                    Text("No transactions yet!",
-                        style: TextStyle(color: Colors.grey[400])),
+                    Text(
+                      "No transactions yet!",
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
                   ],
                 ),
               ),
@@ -162,7 +181,8 @@ class HomeScreen extends StatelessWidget {
                           color: Colors.red.shade400,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Icon(Icons.delete, color: Colors.white),
+                        child:
+                            const Icon(Icons.delete, color: Colors.white),
                       ),
                       child: GestureDetector(
                         onTap: () {
@@ -189,11 +209,39 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ================= CSV IMPORT CARD =================
+  // ================= IMPORT OPTIONS =================
 
-  Widget _importCsvCard(BuildContext context) {
+  Widget _importOptions(BuildContext context) {
+    return Column(
+      children: [
+        _importCard(
+          icon: Icons.upload_file_rounded,
+          color: const Color(0xFF2575FC),
+          title: 'Import CSV',
+          subtitle: 'Upload bank or wallet statement',
+          onTap: () => _showCsvImportSheet(context),
+        ),
+        const SizedBox(height: 15),
+        _importCard(
+          icon: Icons.sms_rounded,
+          color: Colors.orange,
+          title: 'Paste SMS',
+          subtitle: 'Paste bank SMS to auto-extract data',
+          onTap: () => _showSmsImportScreen(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _importCard({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: () => _showCsvImportSheet(context),
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
@@ -212,23 +260,22 @@ class HomeScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF2575FC).withAlpha(25),
+                color: color.withAlpha(25),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.upload_file_rounded,
-                  color: Color(0xFF2575FC)),
+              child: Icon(icon, color: color),
             ),
             const SizedBox(width: 15),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Import CSV',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  SizedBox(height: 4),
-                  Text('Upload bank or wallet statement',
-                      style: TextStyle(color: Colors.grey)),
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 4),
+                  Text(subtitle,
+                      style: const TextStyle(color: Colors.grey)),
                 ],
               ),
             ),
@@ -239,22 +286,27 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ================= CSV BOTTOM SHEET =================
+  // ================= DIALOG / NAVIGATION =================
 
   void _showCsvImportSheet(BuildContext context) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const _CsvImportDialog(),
-  );
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const CsvImportDialog(),
+    );
   }
 
+  void _showSmsImportScreen(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PasteSmsScreen()),
+    );
+  }
 
   // ================= TRANSACTION TILE =================
 
   Widget _transactionTile(TransactionModel tx) {
     final bool isDebit = tx.type == 'debit';
-    final Color color = _getColorForCategory(tx.category);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -262,19 +314,16 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(12),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
       ),
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: color.withAlpha(30),
-            child: Icon(_getIconForCategory(tx.category), color: color),
+            backgroundColor:
+                isDebit ? Colors.red.withAlpha(30) : Colors.green.withAlpha(30),
+            child: Icon(
+              isDebit ? Icons.arrow_upward : Icons.arrow_downward,
+              color: isDebit ? Colors.red : Colors.green,
+            ),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -282,208 +331,25 @@ class HomeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(tx.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(DateFormat.MMMd().format(tx.date),
                     style:
-                        const TextStyle(fontSize: 12, color: Colors.grey)),
+                        const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  DateFormat('MMM dd, yyyy').format(tx.date),
+                  style: const TextStyle(
+                      fontSize: 12, color: Colors.grey),
+                ),
               ],
             ),
           ),
           Text(
             "${isDebit ? '-' : '+'} Rs ${tx.amount.toStringAsFixed(2)}",
             style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isDebit ? Colors.red : Colors.green),
+              fontWeight: FontWeight.bold,
+              color: isDebit ? Colors.red : Colors.green,
+            ),
           ),
         ],
       ),
     );
   }
-
-  IconData _getIconForCategory(String category) {
-    switch (category) {
-      case 'Food':
-        return Icons.fastfood_rounded;
-      case 'Travel':
-        return Icons.directions_car_rounded;
-      case 'Bills':
-        return Icons.receipt_long_rounded;
-      default:
-        return Icons.category_rounded;
-    }
-  }
-
-  Color _getColorForCategory(String category) {
-    switch (category) {
-      case 'Food':
-        return Colors.orange;
-      case 'Travel':
-        return Colors.blue;
-      case 'Bills':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
-  }
 }
-
-// ================= CSV IMPORT BOTTOM SHEET =================
-
-class _CsvImportDialog extends StatefulWidget {
-  const _CsvImportDialog();
-
-  @override
-  State<_CsvImportDialog> createState() => _CsvImportDialogState();
-}
-
-class _CsvImportDialogState extends State<_CsvImportDialog> {
-  final CsvImportService _csvService = CsvImportService();
-  final List<TransactionModel> _preview = [];
-  bool _loading = false;
-
-  Future<void> _pickCsv() async {
-    setState(() => _loading = true);
-
-    final file = await _csvService.pickCsvFile();
-    if (file == null) {
-      setState(() => _loading = false);
-      return;
-    }
-
-    final parsed = await _csvService.parseCsv(file);
-
-    setState(() {
-      _preview.clear();
-      _preview.addAll(parsed);
-      _loading = false;
-    });
-  }
-
-  Future<void> _confirmImport() async {
-    setState(() => _loading = true);
-
-    for (final tx in _preview) {
-      await TransactionService().addTransaction(tx);
-    }
-
-    if (!mounted) return;
-    Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ---------- HEADER ----------
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Import CSV',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-            const Text(
-              'Upload bank or wallet statement',
-              style: TextStyle(color: Colors.grey),
-            ),
-
-            const SizedBox(height: 25),
-
-            // ---------- PICK FILE ----------
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: _loading ? null : _pickCsv,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Select CSV File'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(255, 167, 183, 211),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ),
-
-            if (_loading) ...[
-              const SizedBox(height: 20),
-              const CircularProgressIndicator(),
-            ],
-
-            // ---------- PREVIEW ----------
-            if (_preview.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              Text(
-                'Preview (${_preview.length} transactions)',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 10),
-
-              SizedBox(
-                height: 180,
-                child: ListView.builder(
-                  itemCount: _preview.length,
-                  itemBuilder: (context, index) {
-                    final tx = _preview[index];
-                    return ListTile(
-                      dense: true,
-                      title: Text(tx.title),
-                      subtitle: Text(tx.category),
-                      trailing: Text(
-                        '${tx.type == 'debit' ? '-' : '+'} Rs ${tx.amount.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          color: tx.type == 'debit'
-                              ? Colors.red
-                              : Colors.green,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 15),
-
-              // ---------- CONFIRM ----------
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _confirmImport,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  child: const Text(
-                    'CONFIRM IMPORT',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-

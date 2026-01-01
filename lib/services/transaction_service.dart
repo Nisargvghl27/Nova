@@ -73,4 +73,16 @@ class TransactionService {
         .map((doc) => TransactionModel.fromMap(doc.id, doc.data()))
         .toList();
   }
+  // 🔹 ADD MULTIPLE TRANSACTIONS (CSV / SMS IMPORT)
+Future<void> addTransactionsBatch(List<TransactionModel> txs) async {
+  final batch = FirebaseFirestore.instance.batch();
+
+  for (final tx in txs) {
+    final docRef = _txRef.doc(); // auto ID
+    batch.set(docRef, tx.toMap());
+  }
+
+  await batch.commit();
 }
+}
+

@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
+import '../models/transaction_model.dart';
 
 class WalletScreen extends StatelessWidget {
-  const WalletScreen({super.key});
+  final List<TransactionModel> transactions;
+
+  const WalletScreen({super.key, required this.transactions});
 
   @override
   Widget build(BuildContext context) {
+    // 🔹 Calculate balance from transactions
+    double balance = 0;
+    for (var tx in transactions) {
+      if (tx.type == 'debit') {
+        balance -= tx.amount;
+      } else {
+        balance += tx.amount;
+      }
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -15,24 +28,18 @@ class WalletScreen extends StatelessWidget {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. The Virtual Card
-            _buildCreditCard(),
-            
+            // 1️⃣ Virtual Card (dynamic balance)
+            _buildCreditCard(balance),
+
             const SizedBox(height: 30),
 
-            // 2. Action Buttons (Send, Request, Top Up)
+            // 2️⃣ Action Buttons (future use)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -45,31 +52,33 @@ class WalletScreen extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            // 3. Recent Activity Header
+            // 3️⃣ Recent Transactions
             const Text(
-              'Linked Accounts',
+              'Recent Transactions',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 15),
 
-            // 4. Bank List
-            _buildBankItem("HDFC Bank", "**** 8921", "Rs 24,500.00", Colors.blue[900]!),
-            _buildBankItem("SBI Bank", "**** 1234", "Rs 8,250.50", Colors.blue[600]!),
-            _buildBankItem("Cash", "Wallet", "Rs 1,200.00", Colors.green),
+            if (transactions.isEmpty)
+              const Center(child: Text("No transactions yet"))
+            else
+              ...transactions.take(5).map((tx) => _buildTransactionItem(tx)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCreditCard() {
+  // ================= UI PARTS =================
+
+  Widget _buildCreditCard(double balance) {
     return Container(
       height: 200,
       width: double.infinity,
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF2575FC), Color(0xFF6A11CB)], // Beautiful Blue-Purple
+          colors: [Color(0xFF2575FC), Color(0xFF6A11CB)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -89,40 +98,22 @@ class WalletScreen extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Total Balance',
-                style: TextStyle(color: Colors.white70, fontSize: 16),
-              ),
+              Text('Total Balance',
+                  style: TextStyle(color: Colors.white70)),
               Icon(Icons.credit_card, color: Colors.white70),
             ],
           ),
-          const Text(
-            'Rs 45,250.00',
-            style: TextStyle(
+          Text(
+            'Rs ${balance.toStringAsFixed(2)}',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                '**** **** **** 8921',
-                style: TextStyle(color: Colors.white70, fontSize: 16, letterSpacing: 1.2),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '09/25',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              )
-            ],
+          const Text(
+            '**** **** **** 8921',
+            style: TextStyle(color: Colors.white70),
           ),
         ],
       ),
@@ -149,17 +140,17 @@ class WalletScreen extends StatelessWidget {
           child: Icon(icon, color: const Color(0xFF2575FC), size: 28),
         ),
         const SizedBox(height: 10),
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
-        )
+        Text(label, style: const TextStyle(color: Colors.grey)),
       ],
     );
   }
 
-  Widget _buildBankItem(String name, String number, String amount, Color color) {
+  Widget _buildTransactionItem(TransactionModel tx) {
+    final isDebit = tx.type == 'debit';
+    final color = _getColor(tx.category);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 15),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -167,36 +158,59 @@ class WalletScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            height: 50,
-            width: 50,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.account_balance, color: color),
+          CircleAvatar(
+            backgroundColor: color.withOpacity(0.1),
+            child: Icon(_getIcon(tx.category), color: color),
           ),
           const SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              Text(
-                number,
-                style: TextStyle(color: Colors.grey[500], fontSize: 13),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(tx.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(tx.category,
+                    style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+              ],
+            ),
           ),
-          const Spacer(),
           Text(
-            amount,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            (isDebit ? '-Rs ' : '+Rs ') + tx.amount.toStringAsFixed(0),
+            style: TextStyle(
+              color: isDebit ? Colors.red : Colors.green,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  // ================= HELPERS =================
+
+  IconData _getIcon(String category) {
+    switch (category) {
+      case 'Food':
+        return Icons.fastfood;
+      case 'Travel':
+        return Icons.directions_car;
+      case 'Bills':
+        return Icons.receipt;
+      default:
+        return Icons.category;
+    }
+  }
+
+  Color _getColor(String category) {
+    switch (category) {
+      case 'Food':
+        return Colors.orange;
+      case 'Travel':
+        return Colors.blue;
+      case 'Bills':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 }

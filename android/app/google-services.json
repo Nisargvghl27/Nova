@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "918046690152-q3e56kn4oodopbseb3dpvnm39jqqrr4n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.nova",
+            "certificate_hash": "65a63736a60f300cd8799e51cd66b82b4c487b6c"
+          }
+        },
+        {
           "client_id": "918046690152-qhg6fim4phd2f8ie8o05f3kj35en6kv6.apps.googleusercontent.com",
           "client_type": 3
         }

@@ -73,4 +73,6 @@ class TransactionModel {
       'fingerprint': fingerprint, // 🔹 STORE IN FIRESTORE
     };
   }
+
+  copyWith({required double amount, required String category, required String type, required DateTime date, required String note, required String title}) {}
 }

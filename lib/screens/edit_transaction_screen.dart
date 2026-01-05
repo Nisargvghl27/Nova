@@ -275,6 +275,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../services/transaction_service.dart';
+import '../constants/categories.dart';
 
 class EditTransactionScreen extends StatefulWidget {
   final TransactionModel transaction;

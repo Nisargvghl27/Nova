@@ -5,8 +5,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  // ---------------- SIGN UP ----------------
+  // ================= CURRENT USER =================
+  User? get currentUser => _auth.currentUser;
+
+  // ================= SIGN UP (EMAIL) =================
   Future<User?> signUp({
     required String email,
     required String password,
@@ -20,23 +24,18 @@ class AuthService {
       final user = cred.user;
 
       if (user != null) {
-        // 🔹 Create Firestore user document
-        await _createUserDocument(user);
-
-        // 🔹 Send email verification (EMAIL OTP LINK)
+        await _createUserIfNotExists(user);
         await user.sendEmailVerification();
-
-        // 🔹 IMPORTANT: logout until email is verified
-        await _auth.signOut();
+        await _auth.signOut(); // block login until verified
       }
 
       return user;
     } on FirebaseAuthException catch (e) {
-      throw Exception(e.message);
+      throw Exception(e.message ?? "Signup failed");
     }
   }
 
-  // ---------------- LOGIN ----------------
+  // ================= LOGIN (EMAIL) =================
   Future<User?> login({
     required String email,
     required String password,
@@ -48,16 +47,11 @@ class AuthService {
       );
 
       final user = cred.user;
+      if (user == null) throw Exception("Login failed");
 
-      if (user == null) {
-        throw Exception("Login failed");
-      }
-
-      // 🔄 Refresh user state
       await user.reload();
       final refreshedUser = _auth.currentUser!;
 
-      // 🔒 Block unverified users
       if (!refreshedUser.emailVerified) {
         await _auth.signOut();
         throw Exception("Please verify your email before logging in.");
@@ -65,11 +59,51 @@ class AuthService {
 
       return refreshedUser;
     } on FirebaseAuthException catch (e) {
-      throw Exception(e.message);
+      throw Exception(e.message ?? "Login failed");
     }
   }
 
-  // ---------------- RESEND VERIFICATION EMAIL ----------------
+  // ================= GOOGLE SIGN IN =================
+  Future<User?> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser =
+      await _googleSignIn.signIn();
+
+      if (googleUser == null) return null;
+
+      final GoogleSignInAuthentication googleAuth =
+      await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+      await _auth.signInWithCredential(credential);
+
+      final user = userCredential.user;
+      if (user != null) {
+        await _createUserIfNotExists(user);
+      }
+
+      return user;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(e.message ?? "Google sign-in failed");
+    }
+  }
+
+  // ================= LOGOUT =================
+  Future<void> logout() async {
+    try {
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+    } catch (e) {
+      throw Exception("Logout failed");
+    }
+  }
+
+  // ================= RESEND EMAIL VERIFICATION =================
   Future<void> resendVerificationEmail() async {
     final user = _auth.currentUser;
     if (user != null && !user.emailVerified) {
@@ -77,72 +111,26 @@ class AuthService {
     }
   }
 
-  // ---------------- LOGOUT ----------------
-  Future<void> logout() async {
-    try {
-      await _auth.signOut();
-    } catch (e) {
-      print("Logout Error: $e");
-      rethrow;
-    }
-  }
-
-  // ---------------- CREATE USER DOC ----------------
-  Future<void> _createUserDocument(User user) async {
+  // ================= CREATE USER (SAFE) =================
+  Future<void> _createUserIfNotExists(User user) async {
     final userRef = _firestore.collection('users').doc(user.uid);
+    final doc = await userRef.get();
 
-    await userRef.set({
-      'uid': user.uid,
-      'email': user.email,
-      'name': user.email!.split('@')[0],
-      'createdAt': FieldValue.serverTimestamp(),
-      'totalBalance': 0.0,
-      'totalIncome': 0.0,
-      'totalExpense': 0.0,
-    });
-  }
-  // ---------------- GOOGLE SIGN IN ----------------
-Future<User?> signInWithGoogle() async {
-  try {
-    final GoogleSignIn googleSignIn = GoogleSignIn();
+    if (!doc.exists) {
+      await userRef.set({
+        'uid': user.uid,
+        'email': user.email,
+        'name': user.displayName ?? user.email!.split('@')[0],
+        'photoUrl': user.photoURL,
+        'biometric': false,
 
-    // Trigger Google Sign-In
-    final GoogleSignInAccount? googleUser =
-        await googleSignIn.signIn();
+        // Wallet / stats defaults
+        'totalBalance': 0.0,
+        'totalIncome': 0.0,
+        'totalExpense': 0.0,
 
-    if (googleUser == null) {
-      return null; // user cancelled
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     }
-
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
-
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    final userCredential =
-        await _auth.signInWithCredential(credential);
-
-    final user = userCredential.user;
-
-    if (user != null) {
-      // Create Firestore doc if first time
-      final doc =
-          await _firestore.collection('users').doc(user.uid).get();
-
-      if (!doc.exists) {
-        await _createUserDocument(user);
-      }
-    }
-
-    return user;
-  } on FirebaseAuthException catch (e) {
-    throw Exception(e.message);
   }
-}
-
-  // ---------------- CURRENT USER ----------------
-  User? get currentUser => _auth.currentUser;
 }

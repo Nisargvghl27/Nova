@@ -5,10 +5,10 @@ import 'package:google_sign_in/google_sign_in.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email'],
   );
-
 
   // ================= CURRENT USER =================
   User? get currentUser => _auth.currentUser;
@@ -29,7 +29,7 @@ class AuthService {
       if (user != null) {
         await _createUserIfNotExists(user);
         await user.sendEmailVerification();
-        await _auth.signOut(); // block login until verified
+        await _auth.signOut(); // force verify first
       }
 
       return user;
@@ -70,12 +70,11 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser =
-      await _googleSignIn.signIn();
+          await _googleSignIn.signIn();
 
-      if (googleUser == null) return null;
+      if (googleUser == null) return null; // cancelled
 
-      final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
+      final googleAuth = await googleUser.authentication;
 
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -83,9 +82,10 @@ class AuthService {
       );
 
       final userCredential =
-      await _auth.signInWithCredential(credential);
+          await _auth.signInWithCredential(credential);
 
       final user = userCredential.user;
+
       if (user != null) {
         await _createUserIfNotExists(user);
       }
@@ -93,6 +93,25 @@ class AuthService {
       return user;
     } on FirebaseAuthException catch (e) {
       throw Exception(e.message ?? "Google sign-in failed");
+    }
+  }
+
+  // ================= UPDATE PROFILE =================
+  Future<void> updateProfile({required String name}) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) throw Exception("No user logged in");
+
+      await user.updateDisplayName(name);
+
+      await _firestore.collection('users').doc(user.uid).update({
+        'name': name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await user.reload();
+    } catch (e) {
+      throw Exception("Profile update failed: $e");
     }
   }
 
@@ -127,7 +146,7 @@ class AuthService {
         'photoUrl': user.photoURL,
         'biometric': false,
 
-        // Wallet / stats defaults
+        // Wallet defaults
         'totalBalance': 0.0,
         'totalIncome': 0.0,
         'totalExpense': 0.0,

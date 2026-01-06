@@ -27,7 +27,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // We use a Scaffold to ensure the screen isn't black
+      // Ensure splash background is compatible with the theme, though we use a gradient covering it.
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Container(
         width: double.infinity,
         decoration: const BoxDecoration(

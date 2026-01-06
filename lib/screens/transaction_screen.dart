@@ -1,287 +1,20 @@
-// import 'package:flutter/material.dart';
-// import 'package:intl/intl.dart';
-// import '../models/transaction_model.dart';
-// import 'edit_transaction_screen.dart';
-//
-// class TransactionsScreen extends StatefulWidget {
-//   final List<TransactionModel> transactions;
-//   final Function(String) onDelete;
-//
-//   const TransactionsScreen({
-//     super.key,
-//     required this.transactions,
-//     required this.onDelete,
-//   });
-//
-//   @override
-//   State<TransactionsScreen> createState() => _TransactionsScreenState();
-// }
-//
-// class _TransactionsScreenState extends State<TransactionsScreen> {
-//   String _searchQuery = '';
-//   String _selectedCategory = 'All';
-//   DateTimeRange? _dateRange;
-//
-//   final List<String> _categories = [
-//     'All',
-//     'Food',
-//     'Travel',
-//     'Bills',
-//     'Shopping',
-//     'Entertainment',
-//     'Health',
-//     'Other',
-//   ];
-//
-//   List<TransactionModel> get _filteredTransactions {
-//     List<TransactionModel> list = widget.transactions;
-//
-//     // 🔍 Search
-//     if (_searchQuery.isNotEmpty) {
-//       list = list
-//           .where((tx) =>
-//               tx.title.toLowerCase().contains(_searchQuery.toLowerCase()))
-//           .toList();
-//     }
-//
-//     // 🏷 Category
-//     if (_selectedCategory != 'All') {
-//       list = list.where((tx) => tx.category == _selectedCategory).toList();
-//     }
-//
-//     // 📅 Date range
-//     if (_dateRange != null) {
-//       list = list.where((tx) {
-//         return tx.date.isAfter(
-//               _dateRange!.start.subtract(const Duration(days: 1)),
-//             ) &&
-//             tx.date.isBefore(
-//               _dateRange!.end.add(const Duration(days: 1)),
-//             );
-//       }).toList();
-//     }
-//
-//     return list;
-//   }
-//
-//   Future<void> _pickDateRange() async {
-//     final range = await showDateRangePicker(
-//       context: context,
-//       firstDate: DateTime(2020),
-//       lastDate: DateTime.now(),
-//     );
-//
-//     if (range != null) {
-//       setState(() => _dateRange = range);
-//     }
-//   }
-//
-//   void _clearFilters() {
-//     setState(() {
-//       _searchQuery = '';
-//       _selectedCategory = 'All';
-//       _dateRange = null;
-//     });
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.grey[50],
-//       appBar: AppBar(
-//         title: const Text('Transactions'),
-//         centerTitle: true,
-//         actions: [
-//           IconButton(
-//             icon: const Icon(Icons.date_range),
-//             onPressed: _pickDateRange,
-//           ),
-//           IconButton(
-//             icon: const Icon(Icons.clear),
-//             onPressed: _clearFilters,
-//             tooltip: 'Clear filters',
-//           ),
-//         ],
-//       ),
-//       body: Column(
-//         children: [
-//           // 🔍 SEARCH
-//           Padding(
-//             padding: const EdgeInsets.all(15),
-//             child: TextField(
-//               decoration: InputDecoration(
-//                 hintText: 'Search by title...',
-//                 prefixIcon: const Icon(Icons.search),
-//                 filled: true,
-//                 fillColor: Colors.white,
-//                 border: OutlineInputBorder(
-//                   borderRadius: BorderRadius.circular(15),
-//                   borderSide: BorderSide.none,
-//                 ),
-//               ),
-//               onChanged: (value) {
-//                 setState(() => _searchQuery = value);
-//               },
-//             ),
-//           ),
-//
-//           // 🏷 CATEGORY FILTER
-//           SizedBox(
-//             height: 40,
-//             child: ListView(
-//               scrollDirection: Axis.horizontal,
-//               padding: const EdgeInsets.symmetric(horizontal: 10),
-//               children: _categories.map((cat) {
-//                 final selected = _selectedCategory == cat;
-//                 return Padding(
-//                   padding: const EdgeInsets.symmetric(horizontal: 6),
-//                   child: ChoiceChip(
-//                     label: Text(cat),
-//                     selected: selected,
-//                     selectedColor: const Color(0xFF2575FC),
-//                     labelStyle: TextStyle(
-//                       color: selected ? Colors.white : Colors.black,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                     onSelected: (_) {
-//                       setState(() => _selectedCategory = cat);
-//                     },
-//                   ),
-//                 );
-//               }).toList(),
-//             ),
-//           ),
-//
-//           const SizedBox(height: 10),
-//
-//           // 📋 LIST
-//           Expanded(
-//             child: _filteredTransactions.isEmpty
-//                 ? const Center(
-//                     child: Text(
-//                       'No transactions found',
-//                       style: TextStyle(color: Colors.grey),
-//                     ),
-//                   )
-//                 : ListView.builder(
-//                     padding: const EdgeInsets.all(15),
-//                     itemCount: _filteredTransactions.length,
-//                     itemBuilder: (context, index) {
-//                       final tx = _filteredTransactions[index];
-//
-//                       return Dismissible(
-//                         key: Key(tx.id),
-//                         direction: DismissDirection.endToStart,
-//                         onDismissed: (_) {
-//                           widget.onDelete(tx.id);
-//                           ScaffoldMessenger.of(context).showSnackBar(
-//                             SnackBar(
-//                               content:
-//                                   Text('${tx.title} deleted'),
-//                               duration:
-//                                   const Duration(seconds: 2),
-//                             ),
-//                           );
-//                         },
-//                         background: Container(
-//                           alignment: Alignment.centerRight,
-//                           padding:
-//                               const EdgeInsets.only(right: 20),
-//                           decoration: BoxDecoration(
-//                             color: Colors.red,
-//                             borderRadius:
-//                                 BorderRadius.circular(15),
-//                           ),
-//                           child: const Icon(Icons.delete,
-//                               color: Colors.white),
-//                         ),
-//                         child: GestureDetector(
-//                           onTap: () {
-//                             Navigator.push(
-//                               context,
-//                               MaterialPageRoute(
-//                                 builder: (_) =>
-//                                     EditTransactionScreen(
-//                                         transaction: tx),
-//                               ),
-//                             );
-//                           },
-//                           child: _transactionTile(tx),
-//                         ),
-//                       );
-//                     },
-//                   ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-//
-//   // ================= TILE =================
-//
-//   Widget _transactionTile(TransactionModel tx) {
-//     final bool isDebit = tx.type == 'debit';
-//
-//     return Container(
-//       margin: const EdgeInsets.only(bottom: 12),
-//       padding: const EdgeInsets.all(15),
-//       decoration: BoxDecoration(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.circular(18),
-//       ),
-//       child: Row(
-//         children: [
-//           CircleAvatar(
-//             backgroundColor:
-//                 isDebit ? Colors.red.withAlpha(30) : Colors.green.withAlpha(30),
-//             child: Icon(
-//               isDebit ? Icons.arrow_upward : Icons.arrow_downward,
-//               color: isDebit ? Colors.red : Colors.green,
-//             ),
-//           ),
-//           const SizedBox(width: 15),
-//           Expanded(
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text(
-//                   tx.title,
-//                   style: const TextStyle(
-//                       fontWeight: FontWeight.bold),
-//                 ),
-//                 Text(
-//                   DateFormat('MMM dd, yyyy').format(tx.date),
-//                   style: const TextStyle(
-//                       fontSize: 12, color: Colors.grey),
-//                 ),
-//               ],
-//             ),
-//           ),
-//           Text(
-//             "${isDebit ? '-' : '+'} Rs ${tx.amount.toStringAsFixed(2)}",
-//             style: TextStyle(
-//               fontWeight: FontWeight.bold,
-//               color: isDebit ? Colors.red : Colors.green,
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
+import '../constants/categories.dart';
+import '../services/transaction_service.dart';
 import 'edit_transaction_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
+  final List<TransactionModel> deletedTransactions;
   final Function(String) onDelete;
 
   const TransactionsScreen({
     super.key,
     required this.transactions,
+    required this.deletedTransactions,
     required this.onDelete,
   });
 
@@ -294,46 +27,32 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   String _selectedCategory = 'All';
   DateTimeRange? _dateRange;
 
-  final List<String> _categories = [
-    'All',
-    'Food',
-    'Travel',
-    'Bills',
-    'Shopping',
-    'Entertainment',
-    'Health',
-    'Other',
-  ];
-
-  // ✅ LOGIC FIXED (NO UI CHANGE)
+  // ================= FILTER LOGIC =================
   List<TransactionModel> get _filteredTransactions {
-    // 🔒 Create safe copy + sort latest first
+    // safe copy + latest first
     List<TransactionModel> list = List.from(widget.transactions)
       ..sort((a, b) => b.date.compareTo(a.date));
 
-    // 🔍 Search
+    // search (title + category)
     if (_searchQuery.isNotEmpty) {
       list = list
-          .where(
-            (tx) => tx.title
-            .toLowerCase()
-            .contains(_searchQuery.toLowerCase()),
-      )
+          .where((tx) =>
+              tx.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              tx.category.toLowerCase().contains(_searchQuery.toLowerCase()))
           .toList();
     }
 
-    // 🏷 Category
+    // category filter
     if (_selectedCategory != 'All') {
-      list =
-          list.where((tx) => tx.category == _selectedCategory).toList();
+      list = list.where((tx) => tx.category == _selectedCategory).toList();
     }
 
-    // 📅 Date range
+    // date range filter
     if (_dateRange != null) {
       list = list.where((tx) {
         return tx.date.isAfter(
-          _dateRange!.start.subtract(const Duration(days: 1)),
-        ) &&
+              _dateRange!.start.subtract(const Duration(days: 1)),
+            ) &&
             tx.date.isBefore(
               _dateRange!.end.add(const Duration(days: 1)),
             );
@@ -343,11 +62,33 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     return list;
   }
 
+  // ================= DATE PICKER =================
   Future<void> _pickDateRange() async {
+    HapticFeedback.lightImpact();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final range = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: Color(0xFF2575FC),
+                    onPrimary: Colors.white,
+                    surface: Color(0xFF1E1E1E),
+                    onSurface: Colors.white,
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFF2575FC),
+                    onPrimary: Colors.white,
+                  ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (range != null) {
@@ -356,6 +97,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _clearFilters() {
+    HapticFeedback.mediumImpact();
     setState(() {
       _searchQuery = '';
       _selectedCategory = 'All';
@@ -363,186 +105,215 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text('Transactions'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.date_range),
-            onPressed: _pickDateRange,
-          ),
-          IconButton(
-            icon: const Icon(Icons.clear),
-            onPressed: _clearFilters,
-            tooltip: 'Clear filters',
+  // ================= DELETE =================
+  void _performDelete(TransactionModel tx) {
+    widget.onDelete(tx.id);
+    HapticFeedback.mediumImpact();
+  }
+
+  // ================= HEADER =================
+  Widget _buildHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
           ),
         ],
       ),
-      body: Column(
+      child: Row(
         children: [
-          // 🔍 SEARCH
-          Padding(
-            padding: const EdgeInsets.all(15),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search by title...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-              },
+          const Icon(Icons.list_alt_rounded, size: 28),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Transactions',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
             ),
           ),
-
-          // 🏷 CATEGORY FILTER
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              children: _categories.map((cat) {
-                final selected = _selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: ChoiceChip(
-                    label: Text(cat),
-                    selected: selected,
-                    selectedColor: const Color(0xFF2575FC),
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    onSelected: (_) {
-                      setState(() => _selectedCategory = cat);
-                    },
-                  ),
-                );
-              }).toList(),
+          IconButton(
+            onPressed: _pickDateRange,
+            icon: Icon(
+              Icons.date_range_rounded,
+              color: _dateRange != null
+                  ? const Color(0xFF2575FC)
+                  : (isDark ? Colors.white70 : Colors.grey),
             ),
           ),
-
-          const SizedBox(height: 10),
-
-          // 📋 LIST
-          Expanded(
-            child: _filteredTransactions.isEmpty
-                ? const Center(
-              child: Text(
-                'No transactions found',
-                style: TextStyle(color: Colors.grey),
-              ),
-            )
-                : ListView.builder(
-              padding: const EdgeInsets.all(15),
-              itemCount: _filteredTransactions.length,
-              itemBuilder: (context, index) {
-                final tx = _filteredTransactions[index];
-
-                return Dismissible(
-                  key: ValueKey(tx.id), // ✅ FIXED
-                  direction: DismissDirection.endToStart,
-                  onDismissed: (_) {
-                    widget.onDelete(tx.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${tx.title} deleted'),
-                        duration:
-                        const Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding:
-                    const EdgeInsets.only(right: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius:
-                      BorderRadius.circular(15),
-                    ),
-                    child: const Icon(Icons.delete,
-                        color: Colors.white),
-                  ),
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              EditTransactionScreen(
-                                  transaction: tx),
-                        ),
-                      );
-                    },
-                    child: _transactionTile(tx),
-                  ),
-                );
-              },
+          if (_searchQuery.isNotEmpty ||
+              _selectedCategory != 'All' ||
+              _dateRange != null)
+            IconButton(
+              onPressed: _clearFilters,
+              icon: const Icon(Icons.filter_alt_off_rounded, color: Colors.red),
             ),
-          ),
         ],
       ),
     );
   }
 
-  // ================= TILE =================
+  // ================= UI =================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
 
-  Widget _transactionTile(TransactionModel tx) {
-    final bool isDebit = tx.type == 'debit';
+            // search + filter
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Search transactions',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (v) =>
+                          setState(() => _searchQuery = v),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    icon: const Icon(Icons.filter_list),
+                    onPressed: _showCategoryFilterSheet,
+                  ),
+                ],
+              ),
+            ),
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+            // list
+            Expanded(
+              child: _filteredTransactions.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _filteredTransactions.length,
+                      itemBuilder: (context, index) {
+                        final tx = _filteredTransactions[index];
+                        return _AnimatedTransactionTile(
+                          transaction: tx,
+                          index: index,
+                          onDelete: () => _performDelete(tx),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    EditTransactionScreen(transaction: tx),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor:
-            isDebit ? Colors.red.withAlpha(30) : Colors.green.withAlpha(30),
-            child: Icon(
-              isDebit ? Icons.arrow_upward : Icons.arrow_downward,
-              color: isDebit ? Colors.red : Colors.green,
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Text(
+        'No transactions found',
+        style: TextStyle(color: Colors.grey),
+      ),
+    );
+  }
+
+  // ================= CATEGORY FILTER =================
+  void _showCategoryFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return ListView(
+          children: [
+            ListTile(
+              title: const Text('All'),
+              onTap: () {
+                setState(() => _selectedCategory = 'All');
+                Navigator.pop(context);
+              },
             ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tx.title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  DateFormat('MMM dd, yyyy').format(tx.date),
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.grey),
-                ),
-              ],
+            ...ExpenseCategories.list.map(
+              (cat) => ListTile(
+                title: Text(cat),
+                onTap: () {
+                  setState(() => _selectedCategory = cat);
+                  Navigator.pop(context);
+                },
+              ),
             ),
-          ),
-          Text(
-            "${isDebit ? '-' : '+'} Rs ${tx.amount.toStringAsFixed(2)}",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isDebit ? Colors.red : Colors.green,
+            ...IncomeCategories.list.map(
+              (cat) => ListTile(
+                title: Text(cat),
+                onTap: () {
+                  setState(() => _selectedCategory = cat);
+                  Navigator.pop(context);
+                },
+              ),
             ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ================= ANIMATED TILE =================
+class _AnimatedTransactionTile extends StatelessWidget {
+  final TransactionModel transaction;
+  final int index;
+  final VoidCallback onDelete;
+  final VoidCallback onTap;
+
+  const _AnimatedTransactionTile({
+    required this.transaction,
+    required this.index,
+    required this.onDelete,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDebit = transaction.type == 'debit';
+    final style = CategoryStyle.getStyle(transaction.category);
+
+    return Dismissible(
+      key: ValueKey(transaction.id),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => onDelete(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.red,
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      child: ListTile(
+        leading: Icon(style.icon, color: style.color),
+        title: Text(transaction.title),
+        subtitle: Text(
+          '${transaction.category} • ${DateFormat('MMM dd').format(transaction.date)}',
+        ),
+        trailing: Text(
+          '${isDebit ? '-' : '+'}₹${transaction.amount.toStringAsFixed(2)}',
+          style: TextStyle(
+            color: isDebit ? Colors.red : Colors.green,
+            fontWeight: FontWeight.bold,
           ),
-        ],
+        ),
+        onTap: onTap,
       ),
     );
   }

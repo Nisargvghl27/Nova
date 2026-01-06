@@ -26,7 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      // AuthWrapper handles navigation
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -45,7 +44,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await AuthService().signInWithGoogle();
-      // AuthWrapper will redirect automatically
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -68,8 +66,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔹 Theme Colors
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final inputFillColor = isDark ? const Color(0xFF1E1E1E) : Colors.grey[100];
+    final borderColor = isDark ? Colors.grey[700]! : Colors.grey.shade300;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
@@ -143,11 +148,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         'Welcome Back',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: textColor,
                         ),
                       ),
                       const SizedBox(height: 30),
@@ -156,11 +162,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
+                        style: TextStyle(color: textColor),
                         decoration: InputDecoration(
                           labelText: 'Email',
-                          prefixIcon: const Icon(Icons.email_outlined),
+                          labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600]),
+                          prefixIcon: Icon(Icons.email_outlined, color: isDark ? Colors.white70 : Colors.grey[600]),
                           filled: true,
-                          fillColor: Colors.grey[100],
+                          fillColor: inputFillColor,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -179,11 +187,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
+                        style: TextStyle(color: textColor),
                         decoration: InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline),
+                          labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600]),
+                          prefixIcon: Icon(Icons.lock_outline, color: isDark ? Colors.white70 : Colors.grey[600]),
                           filled: true,
-                          fillColor: Colors.grey[100],
+                          fillColor: inputFillColor,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -238,14 +248,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 55,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: borderColor),
                           borderRadius: BorderRadius.circular(12),
-                          color: Colors.white,
+                          color: isDark ? Colors.transparent : Colors.white,
                         ),
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
-                            side:
-                                BorderSide.none, // We use Container for border
+                            side: BorderSide.none,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -257,24 +266,23 @@ class _LoginScreenState extends State<LoginScreen> {
                                   width: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Color(0xFF2575FC), // Match app theme
+                                    color: Color(0xFF2575FC),
                                   ),
                                 )
                               : Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    // Official Google Logo
                                     Image.asset(
                                       'assets/images/google_logo.png',
                                       height: 24,
                                       width: 24,
                                     ),
                                     const SizedBox(width: 12),
-                                    const Text(
+                                    Text(
                                       "Continue with Google",
                                       style: TextStyle(
                                         fontSize: 16,
-                                        color: Colors.black87,
+                                        color: textColor,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -289,7 +297,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text("Don't have an account? "),
+                           Text(
+                            "Don't have an account? ",
+                            style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+                          ),
                           InkWell(
                             onTap: () {
                               Navigator.push(

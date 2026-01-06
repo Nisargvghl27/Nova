@@ -10,7 +10,8 @@ class TransactionModel {
   final String source;       // manual | csv | sms
   final String note;         // optional
   final Timestamp createdAt;
-  final String fingerprint; // 🔹 NEW
+  final String fingerprint;
+  final bool isDeleted;      // 🔹 NEW: Soft delete flag
 
   TransactionModel({
     required this.id,
@@ -22,6 +23,7 @@ class TransactionModel {
     required this.source,
     required this.note,
     required this.createdAt,
+    this.isDeleted = false,  // 🔹 Default to false
     String? fingerprint,
   }) : fingerprint = fingerprint ?? _generateFingerprint(
           date: date,
@@ -29,7 +31,7 @@ class TransactionModel {
           title: title,
         );
 
-  /// 🔹 Generate fingerprint (date + amount + title)
+  /// 🔹 Generate fingerprint
   static String _generateFingerprint({
     required DateTime date,
     required double amount,
@@ -47,15 +49,16 @@ class TransactionModel {
   ) {
     return TransactionModel(
       id: id,
-      title: data['title'],
+      title: data['title'] ?? 'Unknown',
       amount: (data['amount'] as num).toDouble(),
       date: (data['date'] as Timestamp).toDate(),
-      category: data['category'],
-      type: data['type'],
-      source: data['source'],
+      category: data['category'] ?? 'Others',
+      type: data['type'] ?? 'debit',
+      source: data['source'] ?? 'manual',
       note: data['note'] ?? '',
-      createdAt: data['createdAt'],
-      fingerprint: data['fingerprint'], // 🔹 READ FROM FIRESTORE
+      createdAt: data['createdAt'] ?? Timestamp.now(),
+      fingerprint: data['fingerprint'],
+      isDeleted: data['isDeleted'] ?? false, // 🔹 Read isDeleted
     );
   }
 
@@ -70,9 +73,37 @@ class TransactionModel {
       'source': source,
       'note': note,
       'createdAt': createdAt,
-      'fingerprint': fingerprint, // 🔹 STORE IN FIRESTORE
+      'fingerprint': fingerprint,
+      'isDeleted': isDeleted, // 🔹 Save isDeleted
     };
   }
 
-  copyWith({required double amount, required String category, required String type, required DateTime date, required String note, required String title}) {}
+  /// 🔹 CopyWith for Editing
+  TransactionModel copyWith({
+    String? title,
+    double? amount,
+    DateTime? date,
+    String? category,
+    String? type,
+    String? source,
+    String? note,
+    Timestamp? createdAt,
+    String? id,
+    bool? isDeleted, // 🔹 Allow updating isDeleted
+  }) {
+    return TransactionModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      amount: amount ?? this.amount,
+      date: date ?? this.date,
+      category: category ?? this.category,
+      type: type ?? this.type,
+      source: source ?? this.source,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      // Pass null to fingerprint to force regeneration if key fields change
+      fingerprint: null, 
+    );
+  }
 }

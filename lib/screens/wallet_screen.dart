@@ -1,220 +1,3 @@
-// import 'package:flutter/material.dart';
-// import '../models/transaction_model.dart';
-
-// class WalletScreen extends StatelessWidget {
-//   final List<TransactionModel> transactions;
-
-//   const WalletScreen({super.key, required this.transactions});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     // 🔹 Calculate balance from transactions
-//     double balance = 0;
-//     for (var tx in transactions) {
-//       if (tx.type == 'debit') {
-//         balance -= tx.amount;
-//       } else {
-//         balance += tx.amount;
-//       }
-//     }
-
-//     return Scaffold(
-//       backgroundColor: Colors.grey[50],
-//       appBar: AppBar(
-//         backgroundColor: Colors.transparent,
-//         elevation: 0,
-//         title: const Text(
-//           'My Wallet',
-//           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-//         ),
-//         centerTitle: true,
-//       ),
-//       body: SingleChildScrollView(
-//         padding: const EdgeInsets.all(20),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             // 1️⃣ Virtual Card (dynamic balance)
-//             _buildCreditCard(balance),
-
-//             const SizedBox(height: 30),
-
-//             // 2️⃣ Action Buttons (future use)
-//             Row(
-//               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//               children: [
-//                 _buildActionButton(Icons.arrow_upward, 'Send'),
-//                 _buildActionButton(Icons.arrow_downward, 'Request'),
-//                 _buildActionButton(Icons.add, 'Top Up'),
-//                 _buildActionButton(Icons.grid_view_rounded, 'More'),
-//               ],
-//             ),
-
-//             const SizedBox(height: 30),
-
-//             // 3️⃣ Recent Transactions
-//             const Text(
-//               'Recent Transactions',
-//               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-//             ),
-//             const SizedBox(height: 15),
-
-//             if (transactions.isEmpty)
-//               const Center(child: Text("No transactions yet"))
-//             else
-//               ...transactions.take(5).map((tx) => _buildTransactionItem(tx)),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-
-//   // ================= UI PARTS =================
-
-//   Widget _buildCreditCard(double balance) {
-//     return Container(
-//       height: 200,
-//       width: double.infinity,
-//       padding: const EdgeInsets.all(25),
-//       decoration: BoxDecoration(
-//         gradient: const LinearGradient(
-//           colors: [Color(0xFF2575FC), Color(0xFF6A11CB)],
-//           begin: Alignment.topLeft,
-//           end: Alignment.bottomRight,
-//         ),
-//         borderRadius: BorderRadius.circular(25),
-//         boxShadow: [
-//           BoxShadow(
-//             color: const Color(0xFF2575FC).withOpacity(0.4),
-//             blurRadius: 15,
-//             offset: const Offset(0, 10),
-//           ),
-//         ],
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//         children: [
-//           const Row(
-//             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//             children: [
-//               Text('Total Balance',
-//                   style: TextStyle(color: Colors.white70)),
-//               Icon(Icons.credit_card, color: Colors.white70),
-//             ],
-//           ),
-//           Text(
-//             'Rs ${balance.toStringAsFixed(2)}',
-//             style: const TextStyle(
-//               color: Colors.white,
-//               fontSize: 32,
-//               fontWeight: FontWeight.bold,
-//             ),
-//           ),
-//           const Text(
-//             '**** **** **** 8921',
-//             style: TextStyle(color: Colors.white70),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _buildActionButton(IconData icon, String label) {
-//     return Column(
-//       children: [
-//         Container(
-//           height: 60,
-//           width: 60,
-//           decoration: BoxDecoration(
-//             color: Colors.white,
-//             borderRadius: BorderRadius.circular(18),
-//             boxShadow: [
-//               BoxShadow(
-//                 color: Colors.grey.withOpacity(0.1),
-//                 blurRadius: 10,
-//                 offset: const Offset(0, 5),
-//               ),
-//             ],
-//           ),
-//           child: Icon(icon, color: const Color(0xFF2575FC), size: 28),
-//         ),
-//         const SizedBox(height: 10),
-//         Text(label, style: const TextStyle(color: Colors.grey)),
-//       ],
-//     );
-//   }
-
-//   Widget _buildTransactionItem(TransactionModel tx) {
-//     final isDebit = tx.type == 'debit';
-//     final color = _getColor(tx.category);
-
-//     return Container(
-//       margin: const EdgeInsets.only(bottom: 12),
-//       padding: const EdgeInsets.all(15),
-//       decoration: BoxDecoration(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.circular(15),
-//       ),
-//       child: Row(
-//         children: [
-//           CircleAvatar(
-//             backgroundColor: color.withOpacity(0.1),
-//             child: Icon(_getIcon(tx.category), color: color),
-//           ),
-//           const SizedBox(width: 15),
-//           Expanded(
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text(tx.title,
-//                     style: const TextStyle(fontWeight: FontWeight.bold)),
-//                 Text(tx.category,
-//                     style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-//               ],
-//             ),
-//           ),
-//           Text(
-//             (isDebit ? '-Rs ' : '+Rs ') + tx.amount.toStringAsFixed(0),
-//             style: TextStyle(
-//               color: isDebit ? Colors.red : Colors.green,
-//               fontWeight: FontWeight.bold,
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   // ================= HELPERS =================
-
-//   IconData _getIcon(String category) {
-//     switch (category) {
-//       case 'Food':
-//         return Icons.fastfood;
-//       case 'Travel':
-//         return Icons.directions_car;
-//       case 'Bills':
-//         return Icons.receipt;
-//       default:
-//         return Icons.category;
-//     }
-//   }
-
-//   Color _getColor(String category) {
-//     switch (category) {
-//       case 'Food':
-//         return Colors.orange;
-//       case 'Travel':
-//         return Colors.blue;
-//       case 'Bills':
-//         return Colors.green;
-//       default:
-//         return Colors.grey;
-//     }
-//   }
-// }
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -265,8 +48,10 @@ class _WalletScreenState extends State<WalletScreen>
       }
     }
 
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
+      backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -307,10 +92,12 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -343,7 +130,7 @@ class _WalletScreenState extends State<WalletScreen>
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -353,6 +140,7 @@ class _WalletScreenState extends State<WalletScreen>
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5,
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 SizedBox(height: 2),
@@ -360,7 +148,7 @@ class _WalletScreenState extends State<WalletScreen>
                   'Manage your finances',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey,
+                    color: isDark ? Colors.white70 : Colors.grey,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -370,10 +158,14 @@ class _WalletScreenState extends State<WalletScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: isDark ? Colors.grey[800] : Colors.grey[100],
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.notifications_none_rounded, size: 22),
+            child: Icon(
+              Icons.notifications_none_rounded, 
+              size: 22,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
           ),
         ],
       ),
@@ -569,6 +361,9 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildActionButton(IconData icon, String label, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -595,7 +390,7 @@ class _WalletScreenState extends State<WalletScreen>
             height: 68,
             width: 68,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
@@ -620,7 +415,7 @@ class _WalletScreenState extends State<WalletScreen>
           Text(
             label,
             style: TextStyle(
-              color: Colors.grey[700],
+              color: isDark ? Colors.white70 : Colors.grey[700],
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -674,10 +469,13 @@ class _WalletScreenState extends State<WalletScreen>
     required Color color,
     required bool isIncome,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -702,7 +500,7 @@ class _WalletScreenState extends State<WalletScreen>
           Text(
             label,
             style: TextStyle(
-              color: Colors.grey[600],
+              color: isDark ? Colors.white70 : Colors.grey[600],
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -730,6 +528,8 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildRecentTransactionsHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 800),
@@ -758,12 +558,13 @@ class _WalletScreenState extends State<WalletScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'Recent Transactions',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.3,
+                  color: isDark ? Colors.white : Colors.black,
                 ),
               ),
             ],
@@ -772,7 +573,7 @@ class _WalletScreenState extends State<WalletScreen>
             'Last 5',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey[600],
+              color: isDark ? Colors.white70 : Colors.grey[600],
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -784,6 +585,8 @@ class _WalletScreenState extends State<WalletScreen>
   Widget _buildAnimatedTransactionItem(TransactionModel tx, int index) {
     final isDebit = tx.type == 'debit';
     final color = _getColorForCategory(tx.category);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -799,7 +602,7 @@ class _WalletScreenState extends State<WalletScreen>
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -830,10 +633,11 @@ class _WalletScreenState extends State<WalletScreen>
                 children: [
                   Text(
                     tx.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
                       letterSpacing: -0.3,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -842,7 +646,7 @@ class _WalletScreenState extends State<WalletScreen>
                       Text(
                         tx.category,
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: isDark ? Colors.white70 : Colors.grey[600],
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
@@ -879,6 +683,9 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildEmptyState() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 600),
@@ -892,7 +699,7 @@ class _WalletScreenState extends State<WalletScreen>
       child: Container(
         padding: const EdgeInsets.all(40),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -900,7 +707,7 @@ class _WalletScreenState extends State<WalletScreen>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -914,7 +721,7 @@ class _WalletScreenState extends State<WalletScreen>
               'No transactions yet',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: isDark ? Colors.white70 : Colors.grey[600],
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -933,41 +740,28 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
+  // ... (Icons and Colors methods same as existing)
   IconData _getIconForCategory(String category) {
-    switch (category) {
-      case 'Food':
-        return Icons.restaurant_rounded;
-      case 'Transport':
-        return Icons.directions_car_rounded;
-      case 'Shopping':
-        return Icons.shopping_bag_rounded;
-      case 'Entertainment':
-        return Icons.movie_rounded;
-      case 'Bills':
-        return Icons.receipt_long_rounded;
-      case 'Travel':
-        return Icons.flight_rounded;
-      default:
-        return Icons.category_rounded;
+     switch (category) {
+      case 'Food': return Icons.restaurant_rounded;
+      case 'Transport': return Icons.directions_car_rounded;
+      case 'Shopping': return Icons.shopping_bag_rounded;
+      case 'Entertainment': return Icons.movie_rounded;
+      case 'Bills': return Icons.receipt_long_rounded;
+      case 'Travel': return Icons.flight_rounded;
+      default: return Icons.category_rounded;
     }
   }
 
   Color _getColorForCategory(String category) {
     switch (category) {
-      case 'Food':
-        return const Color(0xFFFF6B6B);
-      case 'Transport':
-        return const Color(0xFF4ECDC4);
-      case 'Shopping':
-        return const Color(0xFFFFA07A);
-      case 'Entertainment':
-        return const Color(0xFFBA68C8);
-      case 'Bills':
-        return const Color(0xFF95E1D3);
-      case 'Travel':
-        return const Color(0xFF4ECDC4);
-      default:
-        return const Color(0xFF78909C);
+      case 'Food': return const Color(0xFFFF6B6B);
+      case 'Transport': return const Color(0xFF4ECDC4);
+      case 'Shopping': return const Color(0xFFFFA07A);
+      case 'Entertainment': return const Color(0xFFBA68C8);
+      case 'Bills': return const Color(0xFF95E1D3);
+      case 'Travel': return const Color(0xFF4ECDC4);
+      default: return const Color(0xFF78909C);
     }
   }
 }

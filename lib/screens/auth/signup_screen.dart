@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/auth_service.dart';
 
-
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -18,45 +17,42 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _loading = false;
 
   Future<void> _signup() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  if (_passwordController.text != _confirmPasswordController.text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Passwords do not match")),
-    );
-    return;
-  }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords do not match")),
+      );
+      return;
+    }
 
-  setState(() => _loading = true);
+    setState(() => _loading = true);
 
-  try {
-    await AuthService().signUp(
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-    );
+    try {
+      await AuthService().signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          "Verification email sent. Please verify and login.",
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Verification email sent. Please verify and login.",
+          ),
         ),
-      ),
-    );
+      );
 
-    // ✅ GO BACK TO LOGIN (NOT MAIN SCREEN)
-    Navigator.pop(context);
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
 
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(e.toString())),
-    );
+    if (mounted) setState(() => _loading = false);
   }
-
-  if (mounted) setState(() => _loading = false);
-}
-
 
   @override
   void dispose() {
@@ -68,8 +64,14 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔹 Theme Colors
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final inputFillColor = isDark ? const Color(0xFF1E1E1E) : Colors.grey[100];
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -119,11 +121,13 @@ class _SignupScreenState extends State<SignupScreen> {
                     // Email
                     TextFormField(
                       controller: _emailController,
+                      style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: 'Email',
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600]),
+                        prefixIcon: Icon(Icons.email_outlined, color: isDark ? Colors.white70 : Colors.grey[600]),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: inputFillColor,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -142,11 +146,13 @@ class _SignupScreenState extends State<SignupScreen> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
+                      style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600]),
+                        prefixIcon: Icon(Icons.lock_outline, color: isDark ? Colors.white70 : Colors.grey[600]),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: inputFillColor,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -165,11 +171,13 @@ class _SignupScreenState extends State<SignupScreen> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: true,
+                      style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: 'Confirm Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600]),
+                        prefixIcon: Icon(Icons.lock_outline, color: isDark ? Colors.white70 : Colors.grey[600]),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: inputFillColor,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -203,13 +211,13 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: _loading
                             ? const CircularProgressIndicator(color: Colors.white)
                             : const Text(
-                          'SIGN UP',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                                'SIGN UP',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
 

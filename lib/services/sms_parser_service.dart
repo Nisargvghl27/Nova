@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 import '../models/transaction_model.dart';
+import 'category_service.dart';
 
 class SmsParserService {
   /// 🔹 Parse multiple pasted SMS
@@ -28,9 +29,12 @@ class SmsParserService {
       return null;
     }
 
-    // 💰 Amount
-    final amountRegex =
-        RegExp(r'(rs\.?|inr|₹)\s?([\d,]+\.?\d*)');
+    // 💰 Amount (INR / Rs / ₹)
+    final amountRegex = RegExp(
+      r'(rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)',
+      caseSensitive: false,
+    );
+
     final amountMatch = amountRegex.firstMatch(text);
     if (amountMatch == null) return null;
 
@@ -39,52 +43,83 @@ class SmsParserService {
     );
     if (amount == null) return null;
 
-    // 🔄 Debit / Credit
-    final bool isDebit = text.contains('debit') ||
-        text.contains('spent') ||
-        text.contains('withdrawn');
+    // 🔄 Debit / Credit detection
+    final debitKeywords = [
+      'debit',
+      'spent',
+      'paid',
+      'payment',
+      'purchase',
+      'withdrawn',
+      'txn',
+      'deducted',
+    ];
 
-    final bool isCredit = text.contains('credit') || text.contains('receive');
+    final creditKeywords = [
+      'credit',
+      'credited',
+      'received',
+      'refund',
+      'cashback',
+      'salary',
+    ];
 
-    if (!isDebit && !isCredit) return null;
+    final bool isDebit =
+    debitKeywords.any((word) => text.contains(word));
+    final bool isCredit =
+    creditKeywords.any((word) => text.contains(word));
 
-    // 🏪 Merchant (supports: by / at / to)
+    // 🚨 If nothing detected → assume debit (real-world behavior)
+    final bool finalIsDebit = isCredit ? false : true;
+
+    // 🏪 Merchant Detection
     String merchant = 'Bank Transaction';
 
-// Remove currency noise first
-final cleanedText = text
-    .replaceAll(RegExp(r'(rs\.?|inr|₹)\s?\d+'), '')
-    .replaceAll(RegExp(r'\d+'), '');
+    final normalizedText = text
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
 
-// Strong merchant patterns (priority order)
-final merchantPatterns = [
-  RegExp(r'(?:at|to|for)\s+([a-zA-Z &._-]+)'),
-  RegExp(r'(?:by)\s+([a-zA-Z &._-]+)'),
-];
+    final merchantPatterns = [
+      RegExp(r'paid to\s+([a-zA-Z0-9 &._-]+)'),
+      RegExp(r'spent at\s+([a-zA-Z0-9 &._-]+)'),
+      RegExp(r'at\s+([a-zA-Z0-9 &._-]+)'),
+      RegExp(r'to\s+([a-zA-Z0-9 &._-]+)'),
+      RegExp(r'for\s+([a-zA-Z0-9 &._-]+)'),
+    ];
 
-for (final pattern in merchantPatterns) {
-  final match = pattern.firstMatch(cleanedText);
-  if (match != null) {
-    merchant = match.group(1)!
-        .trim()
-        .split(' ')
-        .first; // single clean word
-    break;
-  }
-}
+    for (final pattern in merchantPatterns) {
+      final match = pattern.firstMatch(normalizedText);
+      if (match != null) {
+        merchant = match.group(1)!.trim();
+        break;
+      }
+    }
 
-// Final safety check
-if (merchant.toLowerCase() == 'rs') {
-  merchant = 'Bank Transaction';
-}
+    // 🧹 Cleanup noise
+    merchant = merchant
+        .replaceAll(RegExp(r'\bvia\b.*'), '')
+        .replaceAll(RegExp(r'\bupi\b.*'), '')
+        .replaceAll(RegExp(r'\bcard\b.*'), '')
+        .replaceAll(RegExp(r'\bref\b.*'), '')
+        .replaceAll(RegExp(r'\bno\b.*'), '')
+        .trim();
 
+    // 📱 Recharge detection
+    if (text.contains('recharge') ||
+        text.contains('prepaid') ||
+        text.contains('postpaid')) {
+      merchant = 'Mobile Recharge';
+    }
 
+    if (merchant.isEmpty || merchant.length < 3) {
+      merchant = 'Bank Transaction';
+    }
 
-    // 📅 Date (MULTI-FORMAT SAFE)
+    // 📅 Date detection
     DateTime date = DateTime.now();
 
     final dateRegex =
-        RegExp(r'(\d{2}[-/]\d{2}[-/]\d{2,4})');
+    RegExp(r'(\d{2}[-/]\d{2}[-/]\d{2,4})');
     final dateMatch = dateRegex.firstMatch(text);
 
     if (dateMatch != null) {
@@ -111,13 +146,20 @@ if (merchant.toLowerCase() == 'rs') {
     if (text.contains('card')) paymentType = 'Card';
     if (text.contains('atm')) paymentType = 'ATM';
 
+    // 🧠 Category detection
+    final category = CategoryService.detectCategory(
+      merchant: merchant,
+      smsText: smsText,
+      isDebit: finalIsDebit,
+    );
+
     return TransactionModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: _capitalize(merchant),
       amount: amount,
       date: date,
-      category: 'Other', // ML later
-      type: isDebit ? 'debit' : 'credit',
+      category: category,
+      type: finalIsDebit ? 'debit' : 'credit',
       source: 'sms',
       note: paymentType,
       createdAt: Timestamp.now(),

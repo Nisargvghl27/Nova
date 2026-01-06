@@ -1,3 +1,4 @@
+// ================= CSV IMPORT DIALOG =================
 import 'package:flutter/material.dart';
 import '../../models/transaction_model.dart';
 import '../../services/csv_import_service.dart';
@@ -13,41 +14,63 @@ class CsvImportDialog extends StatefulWidget {
 class _CsvImportDialogState extends State<CsvImportDialog> {
   final CsvImportService _csvService = CsvImportService();
   final List<TransactionModel> _preview = [];
+
   bool _loading = false;
+  bool _importing = false;
 
   Future<void> _pickCsv() async {
-    setState(() => _loading = true);
-    final file = await _csvService.pickCsvFile();
-    if (file == null) {
-      if (mounted) setState(() => _loading = false);
-      return;
-    }
-
-    final parsed = await _csvService.parseCsv(file);
-    if (!mounted) return;
-
-    setState(() {
-      _preview
-        ..clear()
-        ..addAll(parsed);
-      _loading = false;
-    });
-  }
-
-  Future<void> _confirmImport() async {
-    if (_preview.isEmpty) return;
+    if (_loading) return;
 
     setState(() => _loading = true);
 
     try {
+      final file = await _csvService.pickCsvFile();
+      if (file == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+
+      final parsed = await _csvService.parseCsv(file);
+
+      if (!mounted) return;
+
+      setState(() {
+        _preview
+          ..clear()
+          ..addAll(parsed);
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('CSV parse error: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _confirmImport() async {
+    if (_preview.isEmpty || _importing) return;
+
+    setState(() {
+      _importing = true;
+      _loading = true;
+    });
+
+    try {
       await TransactionService().addTransactionsBatch(_preview);
+
+      if (!mounted) return;
+
+      // ✅ Return success to parent screen
+      Navigator.pop(context, true);
     } catch (e) {
       debugPrint('CSV import failed: $e');
-    }
 
-    if (!mounted) return;
-    setState(() => _loading = false);
-    Navigator.pop(context);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _importing = false;
+        });
+      }
+    }
   }
 
   @override
@@ -152,7 +175,8 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _loading ? null : _confirmImport,
+                  onPressed:
+                  (_loading || _importing) ? null : _confirmImport,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     shape: RoundedRectangleBorder(

@@ -1,3 +1,103 @@
+// import 'package:flutter/material.dart';
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'firebase_options.dart';
+// import 'screens/splash_screen.dart';
+// import 'screens/auth/login_screen.dart';
+// import 'screens/main_screen.dart';
+
+// // 🔹 1. Global Theme Notifier to manage state
+// final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await Firebase.initializeApp(
+//     options: DefaultFirebaseOptions.currentPlatform,
+//   );
+//   runApp(const MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     // 🔹 2. Wrap MaterialApp with ValueListenableBuilder
+//     return ValueListenableBuilder<ThemeMode>(
+//       valueListenable: themeNotifier,
+//       builder: (_, mode, __) {
+//         return MaterialApp(
+//           title: 'Nova',
+//           debugShowCheckedModeBanner: false,
+          
+//           // 🔹 3. Bind the current mode
+//           themeMode: mode,
+
+//           // 🔹 4. Define Light Theme
+//           theme: ThemeData(
+//             brightness: Brightness.light,
+//             primarySwatch: Colors.indigo,
+//             useMaterial3: true,
+//             scaffoldBackgroundColor: const Color(0xFFF8F9FD),
+//             cardColor: Colors.white,
+//             iconTheme: const IconThemeData(color: Colors.black87),
+//             textTheme: const TextTheme(
+//               bodyLarge: TextStyle(color: Colors.black87),
+//               bodyMedium: TextStyle(color: Colors.black87),
+//             ),
+//           ),
+
+//           // 🔹 5. Define Dark Theme
+//           darkTheme: ThemeData(
+//             brightness: Brightness.dark,
+//             primarySwatch: Colors.indigo,
+//             useMaterial3: true,
+//             scaffoldBackgroundColor: const Color(0xFF121212), // Dark Background
+//             cardColor: const Color(0xFF1E1E1E), // Dark Card Color
+//             dividerColor: Colors.grey[800],
+//             iconTheme: const IconThemeData(color: Colors.white70),
+//             textTheme: const TextTheme(
+//               bodyLarge: TextStyle(color: Colors.white),
+//               bodyMedium: TextStyle(color: Colors.white70),
+//             ),
+//             bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+//               backgroundColor: Color(0xFF1E1E1E),
+//               selectedItemColor: Color(0xFF2575FC),
+//               unselectedItemColor: Colors.grey,
+//             ),
+//           ),
+
+//           home: const AuthWrapper(),
+//         );
+//       },
+//     );
+//   }
+// }
+
+// class AuthWrapper extends StatelessWidget {
+//   const AuthWrapper({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return StreamBuilder<User?>(
+//       stream: FirebaseAuth.instance.authStateChanges(),
+//       builder: (context, snapshot) {
+//         if (snapshot.connectionState == ConnectionState.waiting) {
+//           return const SplashScreen();
+//         }
+
+//         final user = snapshot.data;
+
+//         if (user != null && user.emailVerified) {
+//           return const MainScreen();
+//         }
+
+//         return const LoginScreen();
+//       },
+//     );
+//   }
+// }
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,8 +105,9 @@ import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_screen.dart';
+import 'services/biometric_service.dart'; // 🔹 Ensure this file exists
 
-// 🔹 1. Global Theme Notifier to manage state
+// 1. Global Theme Notifier to manage state
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
@@ -22,18 +123,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🔹 2. Wrap MaterialApp with ValueListenableBuilder
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (_, mode, __) {
         return MaterialApp(
           title: 'Nova',
           debugShowCheckedModeBanner: false,
-          
-          // 🔹 3. Bind the current mode
           themeMode: mode,
-
-          // 🔹 4. Define Light Theme
           theme: ThemeData(
             brightness: Brightness.light,
             primarySwatch: Colors.indigo,
@@ -46,14 +142,12 @@ class MyApp extends StatelessWidget {
               bodyMedium: TextStyle(color: Colors.black87),
             ),
           ),
-
-          // 🔹 5. Define Dark Theme
           darkTheme: ThemeData(
             brightness: Brightness.dark,
             primarySwatch: Colors.indigo,
             useMaterial3: true,
-            scaffoldBackgroundColor: const Color(0xFF121212), // Dark Background
-            cardColor: const Color(0xFF1E1E1E), // Dark Card Color
+            scaffoldBackgroundColor: const Color(0xFF121212),
+            cardColor: const Color(0xFF1E1E1E),
             dividerColor: Colors.grey[800],
             iconTheme: const IconThemeData(color: Colors.white70),
             textTheme: const TextTheme(
@@ -66,7 +160,6 @@ class MyApp extends StatelessWidget {
               unselectedItemColor: Colors.grey,
             ),
           ),
-
           home: const AuthWrapper(),
         );
       },
@@ -74,11 +167,58 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+// 🔹 UPDATED: Handles Biometric Lock Logic
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
   @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isLoading = true;
+  bool _isLocked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricSettings();
+  }
+
+  /// 🔹 Check if user has enabled biometric lock
+  Future<void> _checkBiometricSettings() async {
+    final user = FirebaseAuth.instance.currentUser;
+    // Only lock if user is actually logged in
+    if (user != null) {
+      final isEnabled = await BiometricService.isEnabled();
+      if (isEnabled) {
+        setState(() {
+          _isLocked = true;
+          _isLoading = false;
+        });
+        _authenticate(); // Auto-trigger face/fingerprint scan
+        return;
+      }
+    }
+    
+    setState(() {
+      _isLocked = false;
+      _isLoading = false;
+    });
+  }
+
+  /// 🔹 Trigger the native authentication prompt
+  Future<void> _authenticate() async {
+    final success = await BiometricService.authenticate();
+    if (success) {
+      setState(() => _isLocked = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) return const SplashScreen();
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
@@ -89,9 +229,40 @@ class AuthWrapper extends StatelessWidget {
         final user = snapshot.data;
 
         if (user != null && user.emailVerified) {
+          // 🔒 SHOW LOCK SCREEN IF ENABLED
+          if (_isLocked) {
+            return Scaffold(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock_rounded, size: 64, color: Theme.of(context).primaryColor),
+                    const SizedBox(height: 24),
+                    Text(
+                      'App Locked',
+                      style: TextStyle(
+                        fontSize: 24, 
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).textTheme.bodyLarge?.color
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: _authenticate,
+                      icon: const Icon(Icons.fingerprint),
+                      label: const Text('Unlock'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           return const MainScreen();
         }
-
         return const LoginScreen();
       },
     );

@@ -1,46 +1,3 @@
-#  name: nova
-#  description: "A new Flutter project."
-#  publish_to: 'none'
-#
-#  version: 1.0.0+1
-#
-#  environment:
-#    sdk: ^3.10.3
-#
-#  dependencies:
-#    flutter:
-#      sdk: flutter
-#
-#    intl: ^0.20.2
-#    flutter_sms_inbox: ^1.0.3
-#    permission_handler: ^12.0.1
-#    image_picker: ^1.0.7
-#    fl_chart: ^1.1.1
-#
-#    cupertino_icons: ^1.0.8
-#
-#    # ✅ FIREBASE — ALL SAME GENERATION (3.x)
-#    firebase_core: ^4.3.0
-#    firebase_auth: ^6.1.3
-#    firebase_storage: ^13.0.5
-#    cloud_firestore: ^6.1.1
-#    google_sign_in: ^6.2.1
-#
-#    file_picker: ^10.3.8
-#    csv: ^6.0.0
-#
-#  dev_dependencies:
-#    flutter_test:
-#      sdk: flutter
-#    flutter_lints: ^6.0.0
-#
-#  flutter:
-#    uses-material-design: true
-#    assets:
-#      - assets/images/
-#
-
-
 name: nova
 description: "A new Flutter project."
 publish_to: 'none'
@@ -51,6 +8,8 @@ environment:
   sdk: ^3.10.3
 
 dependencies:
+  local_auth: ^2.1.6
+  shared_preferences: ^2.2.2
   flutter:
     sdk: flutter
 

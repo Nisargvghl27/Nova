@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../services/biometric_service.dart'; // 🔹 Biometric Service
 import 'edit_profile_screen.dart'; 
-import '../../main.dart'; // Import to access themeNotifier
+import '../../main.dart'; // For themeNotifier
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onWalletTap;
@@ -21,7 +22,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  bool _biometricEnabled = true;
+  bool _biometricEnabled = false;
 
   @override
   void initState() {
@@ -30,6 +31,16 @@ class _ProfileScreenState extends State<ProfileScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..forward();
+    
+    _loadBiometricSettings();
+  }
+
+  /// Load the saved biometric preference
+  Future<void> _loadBiometricSettings() async {
+    final enabled = await BiometricService.isEnabled();
+    if (mounted) {
+      setState(() => _biometricEnabled = enabled);
+    }
   }
 
   @override
@@ -41,10 +52,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     final User? user = FirebaseAuth.instance.currentUser;
-    // 🔹 Helper variables for theme
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white70 : Colors.grey[600];
 
     if (user == null) {
       return const Scaffold(body: Center(child: Text('No user logged in')));
@@ -56,17 +65,17 @@ class _ProfileScreenState extends State<ProfileScreen>
           .doc(user.uid)
           .snapshots(),
       builder: (context, snapshot) {
-        String userName =
-            user.displayName ??
-            (snapshot.data?.data() as Map<String, dynamic>?)?['name']
-                ?.toString() ??
-            user.email?.split('@')[0] ??
-            'User';
+        // Safe data extraction
+        String userName = user.displayName ?? 'User';
+        if (snapshot.hasData && snapshot.data!.data() != null) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          if (data.containsKey('name')) userName = data['name'];
+        }
+        
         String userEmail = user.email ?? 'No email';
         String? photoUrl = user.photoURL;
 
         return Scaffold(
-          // 🔹 Use theme background color
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: CustomScrollView(
             physics: const BouncingScrollPhysics(),
@@ -76,119 +85,102 @@ class _ProfileScreenState extends State<ProfileScreen>
               SliverPadding(
                 padding: const EdgeInsets.all(24),
                 sliver: SliverToBoxAdapter(
-                  child: SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildEditProfileButton(context, userName),
-                        const SizedBox(height: 32),
-                        _buildStatsCards(isDark), // Pass isDark
-                        const SizedBox(height: 32),
-                        _buildSectionHeader('General', Icons.settings_rounded, textColor),
-                        const SizedBox(height: 16),
-                        
-                        // 🔹 DARK MODE TOGGLE
-                        _buildThemeSwitch(isDark),
+                  // 🔹 Fixed: Removed redundant SingleChildScrollView
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildEditProfileButton(context, userName),
+                      const SizedBox(height: 32),
+                      _buildStatsCards(isDark),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader('General', Icons.settings_rounded, textColor),
+                      const SizedBox(height: 16),
+                      
+                      _buildThemeSwitch(isDark),
 
-                        _buildSettingItem(
-                          icon: Icons.account_balance_wallet_rounded,
-                          title: 'My Wallet',
-                          subtitle: 'View all transactions',
-                          color1: const Color(0xFF6A11CB),
-                          color2: const Color(0xFF2575FC),
-                          index: 0,
-                          isDark: isDark,
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            if (widget.onWalletTap != null) {
-                              widget.onWalletTap!();
-                            } else {
-                              _showInfoSnackBar(context, 'Use the Wallet tab in bottom navigation');
-                            }
-                          },
-                        ),
-                        _buildSettingItem(
-                          icon: Icons.notifications_rounded,
-                          title: 'Notifications',
-                          subtitle: 'Manage alerts',
-                          color1: const Color(0xFFFF6B6B),
-                          color2: const Color(0xFFFF8E53),
-                          index: 1,
-                          isDark: isDark,
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            _showComingSoonSnackBar(context);
-                          },
-                        ),
-                        _buildSettingItem(
-                          icon: Icons.favorite_rounded,
-                          title: 'Favorites',
-                          subtitle: 'Saved items',
-                          color1: const Color(0xFFBA68C8),
-                          color2: const Color(0xFFE91E63),
-                          index: 2,
-                          isDark: isDark,
-                          onTap: () {
-                             HapticFeedback.lightImpact();
-                            _showComingSoonSnackBar(context);
-                          },
-                        ),
-                        const SizedBox(height: 32),
-                        _buildSectionHeader('Security', Icons.shield_rounded, textColor),
-                        const SizedBox(height: 16),
-                        _buildSettingItem(
-                          icon: Icons.lock_rounded,
-                          title: 'Change Password',
-                          subtitle: 'Update your password',
-                          color1: const Color(0xFF51CF66),
-                          color2: const Color(0xFF37B679),
-                          index: 3,
-                          isDark: isDark,
-                          onTap: () {
-                             HapticFeedback.lightImpact();
-                            _showComingSoonSnackBar(context);
-                          },
-                        ),
-                        _buildBiometricItem(index: 4, isDark: isDark),
-                        const SizedBox(height: 32),
-                        _buildSectionHeader('About', Icons.info_rounded, textColor),
-                        const SizedBox(height: 16),
-                         _buildSettingItem(
-                          icon: Icons.help_rounded,
-                          title: 'Help & Support',
-                          subtitle: 'Get assistance',
-                          color1: const Color(0xFF4ECDC4),
-                          color2: const Color(0xFF44A08D),
-                          index: 5,
-                          isDark: isDark,
-                          onTap: () {
-                             HapticFeedback.lightImpact();
-                            _showComingSoonSnackBar(context);
-                          },
-                        ),
-                        _buildSettingItem(
-                          icon: Icons.privacy_tip_rounded,
-                          title: 'Privacy Policy',
-                          subtitle: 'Terms & conditions',
-                          color1: const Color(0xFF78909C),
-                          color2: const Color(0xFF546E7A),
-                          index: 6,
-                          isDark: isDark,
-                          onTap: () {
-                             HapticFeedback.lightImpact();
-                            _showComingSoonSnackBar(context);
-                          },
-                        ),
-                        const SizedBox(height: 40),
-                        _buildLogoutButton(isDark),
-                        const SizedBox(height: 20),
-                        _buildAppVersion(),
-                        SizedBox(
-                          height: MediaQuery.of(context).padding.bottom + 20,
-                        ),
-                      ],
-                    ),
+                      _buildSettingItem(
+                        icon: Icons.account_balance_wallet_rounded,
+                        title: 'My Wallet',
+                        subtitle: 'View all transactions',
+                        color1: const Color(0xFF6A11CB),
+                        color2: const Color(0xFF2575FC),
+                        index: 0,
+                        isDark: isDark,
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          if (widget.onWalletTap != null) {
+                            widget.onWalletTap!();
+                          }
+                        },
+                      ),
+                      
+                      // Placeholders for other items you had
+                      _buildSettingItem(
+                        icon: Icons.notifications_rounded,
+                        title: 'Notifications',
+                        subtitle: 'Manage alerts',
+                        color1: const Color(0xFFFF6B6B),
+                        color2: const Color(0xFFFF8E53),
+                        index: 1,
+                        isDark: isDark,
+                        onTap: () {
+                           HapticFeedback.lightImpact();
+                          _showComingSoonSnackBar(context);
+                        },
+                      ),
+
+                      const SizedBox(height: 32),
+                      _buildSectionHeader('Security', Icons.shield_rounded, textColor),
+                      const SizedBox(height: 16),
+                      
+                      _buildSettingItem(
+                        icon: Icons.lock_rounded,
+                        title: 'Change Password',
+                        subtitle: 'Update your password',
+                        color1: const Color(0xFF51CF66),
+                        color2: const Color(0xFF37B679),
+                        index: 3,
+                        isDark: isDark,
+                        onTap: () => _showComingSoonSnackBar(context),
+                      ),
+                      
+                      // 🔹 UPDATED BIOMETRIC WIDGET
+                      _buildBiometricItem(index: 4, isDark: isDark),
+                      
+                      const SizedBox(height: 32),
+                      _buildSectionHeader('About', Icons.info_rounded, textColor),
+                      const SizedBox(height: 16),
+                      
+                       _buildSettingItem(
+                        icon: Icons.help_rounded,
+                        title: 'Help & Support',
+                        subtitle: 'Get assistance',
+                        color1: const Color(0xFF4ECDC4),
+                        color2: const Color(0xFF44A08D),
+                        index: 5,
+                        isDark: isDark,
+                        onTap: () => _showComingSoonSnackBar(context),
+                      ),
+                      _buildSettingItem(
+                        icon: Icons.privacy_tip_rounded,
+                        title: 'Privacy Policy',
+                        subtitle: 'Terms & conditions',
+                        color1: const Color(0xFF78909C),
+                        color2: const Color(0xFF546E7A),
+                        index: 6,
+                        isDark: isDark,
+                        onTap: () => _showComingSoonSnackBar(context),
+                      ),
+                      
+                      const SizedBox(height: 40),
+                      _buildLogoutButton(isDark),
+                      const SizedBox(height: 20),
+                      _buildAppVersion(),
+                      
+                      SizedBox(
+                        height: MediaQuery.of(context).padding.bottom + 20,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -199,12 +191,90 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // 🔹 NEW: Theme Switch Widget
+  // 🔹 The New Biometric Toggle Widget
+  Widget _buildBiometricItem({required int index, required bool isDark}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFFFFA07A), Color(0xFFFF6B6B)]),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Biometric Login',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                Text(
+                  'Fingerprint',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white70 : Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _biometricEnabled,
+            onChanged: (val) async {
+              HapticFeedback.mediumImpact();
+              
+              // 1. Authenticate to confirm it's the user
+              bool authenticated = await BiometricService.authenticate();
+              
+              if (authenticated) {
+                // 2. Save preference
+                await BiometricService.setEnabled(val);
+                setState(() => _biometricEnabled = val);
+                
+                // 3. Feedback
+                if (mounted) {
+                  _showInfoSnackBar(
+                    context, 
+                    val ? 'Biometric Login Enabled' : 'Biometric Login Disabled'
+                  );
+                }
+              }
+            },
+            activeColor: const Color(0xFF2575FC),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Theme Switch
   Widget _buildThemeSwitch(bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor, // Dynamic color
+        color: Theme.of(context).cardColor, 
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -246,7 +316,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               value: isDark,
               onChanged: (val) {
                 HapticFeedback.mediumImpact();
-                // Update global notifier
                 themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
               },
               activeColor: const Color(0xFF2575FC),
@@ -258,66 +327,54 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildEditProfileButton(BuildContext context, String currentName) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 0.95 + (value * 0.05),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: Center(
-        child: Container(
-          width: 200,
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
-            ),
-            borderRadius: BorderRadius.circular(26),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2575FC).withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
+    return Center(
+      child: Container(
+        width: 200,
+        height: 52,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
           ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () async {
-                HapticFeedback.lightImpact();
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EditProfileScreen(
-                      currentName: currentName,
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2575FC).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              HapticFeedback.lightImpact();
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditProfileScreen(
+                    currentName: currentName,
+                  ),
+                ),
+              );
+              if (mounted) setState(() {});
+            },
+            borderRadius: BorderRadius.circular(26),
+            child: const Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Edit Profile',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
                     ),
                   ),
-                );
-                if (mounted) setState(() {});
-              },
-              borderRadius: BorderRadius.circular(26),
-              child: const Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.edit_rounded, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Edit Profile',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
@@ -352,18 +409,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: Container(
                     width: 200,
                     height: 200,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.1),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -30,
-                  left: -30,
-                  child: Container(
-                    width: 150,
-                    height: 150,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white.withOpacity(0.1),
@@ -426,7 +471,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildStatsCards(bool isDark) {
-    // Dynamic colors
     final cardColor = Theme.of(context).cardColor;
     final textColor = isDark ? Colors.white : Colors.black87;
 
@@ -623,64 +667,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildBiometricItem({required int index, required bool isDark}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFFFA07A), Color(0xFFFF6B6B)]),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Biometric Login',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                Text(
-                  'Face ID / Touch ID',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.white70 : Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: _biometricEnabled,
-            onChanged: (val) => setState(() => _biometricEnabled = val),
-            activeColor: const Color(0xFF2575FC),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLogoutButton(bool isDark) {
     return Container(
       width: double.infinity,
@@ -732,7 +718,6 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   void _showLogoutConfirmation(BuildContext context) {
     HapticFeedback.mediumImpact();
-    // Also update bottom sheet to support dark mode background
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -745,7 +730,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-             // ... Content remains mostly similar, just ensure text colors are handled by theme automatically or passed in
             const Text(
               'Log Out?',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
@@ -759,7 +743,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: Container(
                     height: 52,
                     decoration: BoxDecoration(
-                      color: Colors.grey[200], // Slightly darker grey for dark mode compat later if needed
+                      color: Colors.grey[200], 
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Material(

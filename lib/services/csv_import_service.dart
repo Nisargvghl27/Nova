@@ -100,7 +100,7 @@ class CsvImportService {
             type: isDebit ? 'debit' : 'credit',
             source: 'csv',
             note: title,
-            createdAt: Timestamp.now(),
+            createdAt: DateTime.now(),
           ),
         );
       } catch (e) {

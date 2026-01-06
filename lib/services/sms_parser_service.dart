@@ -19,6 +19,7 @@ class SmsParserService {
 
   /// 🔹 Parse single SMS
   TransactionModel? parse(String smsText) {
+    final originalText = smsText;
     final text = smsText.toLowerCase();
 
     // ❌ Ignore OTP / spam
@@ -28,7 +29,7 @@ class SmsParserService {
       return null;
     }
 
-    // 💰 Amount
+    // 💰 Amount (Rs / INR / ₹)
     final amountRegex =
         RegExp(r'(rs\.?|inr|₹)\s?([\d,]+\.?\d*)');
     final amountMatch = amountRegex.firstMatch(text);
@@ -37,50 +38,23 @@ class SmsParserService {
     final amount = double.tryParse(
       amountMatch.group(2)!.replaceAll(',', ''),
     );
-    if (amount == null) return null;
+    if (amount == null || amount <= 0) return null;
 
     // 🔄 Debit / Credit
     final bool isDebit = text.contains('debit') ||
         text.contains('spent') ||
-        text.contains('withdrawn');
+        text.contains('withdrawn') ||
+        text.contains('paid');
 
-    final bool isCredit = text.contains('credit') || text.contains('receive');
+    final bool isCredit =
+        text.contains('credit') || text.contains('received');
 
     if (!isDebit && !isCredit) return null;
 
-    // 🏪 Merchant (supports: by / at / to)
-    String merchant = 'Bank Transaction';
+    // 🏪 MERCHANT EXTRACTION (ROBUST)
+    String merchant = _extractMerchant(originalText);
 
-// Remove currency noise first
-final cleanedText = text
-    .replaceAll(RegExp(r'(rs\.?|inr|₹)\s?\d+'), '')
-    .replaceAll(RegExp(r'\d+'), '');
-
-// Strong merchant patterns (priority order)
-final merchantPatterns = [
-  RegExp(r'(?:at|to|for)\s+([a-zA-Z &._-]+)'),
-  RegExp(r'(?:by)\s+([a-zA-Z &._-]+)'),
-];
-
-for (final pattern in merchantPatterns) {
-  final match = pattern.firstMatch(cleanedText);
-  if (match != null) {
-    merchant = match.group(1)!
-        .trim()
-        .split(' ')
-        .first; // single clean word
-    break;
-  }
-}
-
-// Final safety check
-if (merchant.toLowerCase() == 'rs') {
-  merchant = 'Bank Transaction';
-}
-
-
-
-    // 📅 Date (MULTI-FORMAT SAFE)
+    // 📅 DATE (MULTI FORMAT SAFE)
     DateTime date = DateTime.now();
 
     final dateRegex =
@@ -89,7 +63,6 @@ if (merchant.toLowerCase() == 'rs') {
 
     if (dateMatch != null) {
       final rawDate = dateMatch.group(1)!;
-
       final formats = [
         'dd-MM-yyyy',
         'dd/MM/yyyy',
@@ -105,23 +78,53 @@ if (merchant.toLowerCase() == 'rs') {
       }
     }
 
-    // 💳 Payment type
+    // 💳 Payment Method
     String paymentType = 'Unknown';
     if (text.contains('upi')) paymentType = 'UPI';
-    if (text.contains('card')) paymentType = 'Card';
-    if (text.contains('atm')) paymentType = 'ATM';
+    else if (text.contains('card')) paymentType = 'Card';
+    else if (text.contains('atm')) paymentType = 'ATM';
+
+    // ⚠️ IMPORTANT:
+    // DO NOT generate your own ID
+    // Firestore will generate document ID
 
     return TransactionModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: _capitalize(merchant),
+      id: '', // 🔥 MUST be empty (Firestore doc ID used later)
+      title: merchant,
       amount: amount,
       date: date,
       category: 'Other', // ML later
       type: isDebit ? 'debit' : 'credit',
       source: 'sms',
       note: paymentType,
-      createdAt: Timestamp.now(),
+      createdAt: DateTime.now(),
     );
+  }
+
+  // ================= MERCHANT LOGIC =================
+
+  String _extractMerchant(String text) {
+    final lower = text.toLowerCase();
+
+    // Remove amount and numbers
+    String cleaned = lower
+        .replaceAll(RegExp(r'(rs\.?|inr|₹)\s?[\d,]+\.?\d*'), '')
+        .replaceAll(RegExp(r'\d+'), '');
+
+    final patterns = [
+      RegExp(r'(?:to|at|for)\s+([a-zA-Z][a-zA-Z &._-]{2,})'),
+      RegExp(r'(?:by)\s+([a-zA-Z][a-zA-Z &._-]{2,})'),
+    ];
+
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(cleaned);
+      if (match != null) {
+        final merchant = match.group(1)!.trim().split(' ').first;
+        return _capitalize(merchant);
+      }
+    }
+
+    return 'Bank Transaction';
   }
 
   String _capitalize(String text) {

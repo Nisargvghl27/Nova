@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/transaction_model.dart';
-import '../services/transaction_service.dart';
+import '../providers/transaction_provider.dart';
 import '../constants/categories.dart';
 
-class EditTransactionScreen extends StatefulWidget {
+class EditTransactionScreen extends ConsumerStatefulWidget {
   final TransactionModel transaction;
 
   const EditTransactionScreen({
@@ -14,11 +14,12 @@ class EditTransactionScreen extends StatefulWidget {
   });
 
   @override
-  State<EditTransactionScreen> createState() =>
+  ConsumerState<EditTransactionScreen> createState() =>
       _EditTransactionScreenState();
 }
 
-class _EditTransactionScreenState extends State<EditTransactionScreen>
+class _EditTransactionScreenState
+    extends ConsumerState<EditTransactionScreen>
     with SingleTickerProviderStateMixin {
   late TextEditingController _amountController;
   late TextEditingController _noteController;
@@ -41,7 +42,13 @@ class _EditTransactionScreenState extends State<EditTransactionScreen>
         TextEditingController(text: widget.transaction.note);
 
     _isExpense = widget.transaction.type == 'debit';
-    _selectedCategory = widget.transaction.category;
+
+    final categories =
+        _isExpense ? ExpenseCategories.list : IncomeCategories.list;
+
+    _selectedCategory = categories.contains(widget.transaction.category)
+        ? widget.transaction.category
+        : categories.first;
 
     // 🔹 Animations
     _animController = AnimationController(
@@ -116,7 +123,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen>
 
                 const SizedBox(height: 30),
 
-                // ================= CATEGORY DROPDOWN =================
+                // ================= CATEGORY =================
                 const Text(
                   'Category',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -134,7 +141,9 @@ class _EditTransactionScreenState extends State<EditTransactionScreen>
                       )
                       .toList(),
                   onChanged: (value) {
-                    setState(() => _selectedCategory = value!);
+                    if (value != null) {
+                      setState(() => _selectedCategory = value);
+                    }
                   },
                   decoration: InputDecoration(
                     filled: true,
@@ -170,17 +179,15 @@ class _EditTransactionScreenState extends State<EditTransactionScreen>
 
                 const SizedBox(height: 40),
 
-                // ================= SAVE BUTTON =================
+                // ================= SAVE =================
                 SizedBox(
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
-                    onPressed:
-                        _isSaving ? null : _updateTransaction,
+                    onPressed: _isSaving ? null : _updateTransaction,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isExpense
-                          ? const Color(0xFF2575FC)
-                          : Colors.green,
+                      backgroundColor:
+                          _isExpense ? const Color(0xFF2575FC) : Colors.green,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
                       ),
@@ -217,10 +224,10 @@ class _EditTransactionScreenState extends State<EditTransactionScreen>
   Future<void> _updateTransaction() async {
     setState(() => _isSaving = true);
 
-    final double amount =
+    final amount =
         double.tryParse(_amountController.text) ?? 0;
 
-    await TransactionService().updateTransaction(
+    await ref.read(transactionProvider.notifier).updateTransaction(
       widget.transaction.id,
       {
         'title': _noteController.text.isEmpty
@@ -230,7 +237,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen>
         'amount': amount,
         'category': _selectedCategory,
         'type': _isExpense ? 'debit' : 'credit',
-        'updatedAt': Timestamp.now(),
       },
     );
 

@@ -1,57 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+
 import '../models/transaction_model.dart';
+import '../providers/transaction_provider.dart';
+import '../constants/categories.dart';
 import 'edit_transaction_screen.dart';
 
-class TransactionsScreen extends StatefulWidget {
-  final List<TransactionModel> transactions;
-  final Function(String) onDelete;
-
-  const TransactionsScreen({
-    super.key,
-    required this.transactions,
-    required this.onDelete,
-  });
+class TransactionsScreen extends ConsumerStatefulWidget {
+  const TransactionsScreen({super.key});
 
   @override
-  State<TransactionsScreen> createState() => _TransactionsScreenState();
+  ConsumerState<TransactionsScreen> createState() =>
+      _TransactionsScreenState();
 }
 
-class _TransactionsScreenState extends State<TransactionsScreen> {
+class _TransactionsScreenState
+    extends ConsumerState<TransactionsScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
   DateTimeRange? _dateRange;
 
-  final List<String> _categories = [
-    'All',
-    'Food',
-    'Travel',
-    'Bills',
-    'Shopping',
-    'Entertainment',
-    'Health',
-    'Other',
-  ];
+  late final List<String> _filterCategories;
 
-  List<TransactionModel> get _filteredTransactions {
-    List<TransactionModel> list = widget.transactions;
+  @override
+  void initState() {
+    super.initState();
+    _filterCategories = [
+      'All',
+      ...ExpenseCategories.list,
+      ...IncomeCategories.list,
+    ];
+  }
 
-    // 🔍 Search
+  List<TransactionModel> _filtered(List<TransactionModel> list) {
+    var result = list;
+
     if (_searchQuery.isNotEmpty) {
-      list = list
+      result = result
           .where((tx) =>
               tx.title.toLowerCase().contains(_searchQuery.toLowerCase()))
           .toList();
     }
 
-    // 🏷 Category
     if (_selectedCategory != 'All') {
-      list = list.where((tx) => tx.category == _selectedCategory).toList();
+      result = result
+          .where((tx) => tx.category == _selectedCategory)
+          .toList();
     }
 
-    // 📅 Date range
     if (_dateRange != null) {
-      list = list.where((tx) {
+      result = result.where((tx) {
         return tx.date.isAfter(
               _dateRange!.start.subtract(const Duration(days: 1)),
             ) &&
@@ -61,7 +60,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       }).toList();
     }
 
-    return list;
+    return result;
   }
 
   Future<void> _pickDateRange() async {
@@ -70,10 +69,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
     );
-
-    if (range != null) {
-      setState(() => _dateRange = range);
-    }
+    if (range != null) setState(() => _dateRange = range);
   }
 
   void _clearFilters() {
@@ -86,6 +82,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final transactions = ref.watch(transactionProvider);
+    final filtered = _filtered(transactions);
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -99,115 +98,65 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           IconButton(
             icon: const Icon(Icons.clear),
             onPressed: _clearFilters,
-            tooltip: 'Clear filters',
           ),
         ],
       ),
       body: Column(
         children: [
-          // 🔍 SEARCH
           Padding(
             padding: const EdgeInsets.all(15),
             child: TextField(
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Search by title...',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: Icon(Icons.search),
                 filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                ),
               ),
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-              },
+              onChanged: (v) => setState(() => _searchQuery = v),
             ),
           ),
 
-          // 🏷 CATEGORY FILTER
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              children: _categories.map((cat) {
-                final selected = _selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: ChoiceChip(
-                    label: Text(cat),
-                    selected: selected,
-                    selectedColor: const Color(0xFF2575FC),
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    onSelected: (_) {
-                      setState(() => _selectedCategory = cat);
-                    },
-                  ),
-                );
-              }).toList(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedCategory,
+                isExpanded: true,
+                items: _filterCategories
+                    .map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(c),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedCategory = v!),
+              ),
             ),
           ),
 
           const SizedBox(height: 10),
 
-          // 📋 LIST
           Expanded(
-            child: _filteredTransactions.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No transactions found',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
+            child: filtered.isEmpty
+                ? const Center(child: Text('No transactions found'))
                 : ListView.builder(
                     padding: const EdgeInsets.all(15),
-                    itemCount: _filteredTransactions.length,
-                    itemBuilder: (context, index) {
-                      final tx = _filteredTransactions[index];
-
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final tx = filtered[i];
                       return Dismissible(
                         key: Key(tx.id),
                         direction: DismissDirection.endToStart,
                         onDismissed: (_) {
-                          widget.onDelete(tx.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content:
-                                  Text('${tx.title} deleted'),
-                              duration:
-                                  const Duration(seconds: 2),
-                            ),
-                          );
+                          ref
+                              .read(transactionProvider.notifier)
+                              .deleteTransaction(tx.id);
                         },
                         background: Container(
                           alignment: Alignment.centerRight,
-                          padding:
-                              const EdgeInsets.only(right: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius:
-                                BorderRadius.circular(15),
-                          ),
-                          child: const Icon(Icons.delete,
-                              color: Colors.white),
+                          padding: const EdgeInsets.only(right: 20),
+                          color: Colors.red,
+                          child: const Icon(Icons.delete, color: Colors.white),
                         ),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    EditTransactionScreen(
-                                        transaction: tx),
-                              ),
-                            );
-                          },
-                          child: _transactionTile(tx),
-                        ),
+                        child: _tile(tx),
                       );
                     },
                   ),
@@ -217,54 +166,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
-  // ================= TILE =================
+  Widget _tile(TransactionModel tx) {
+    final isDebit = tx.type == 'debit';
 
-  Widget _transactionTile(TransactionModel tx) {
-    final bool isDebit = tx.type == 'debit';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+    return ListTile(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EditTransactionScreen(transaction: tx),
+          ),
+        );
+      },
+      leading: CircleAvatar(
+        backgroundColor:
+            isDebit ? Colors.red.withAlpha(30) : Colors.green.withAlpha(30),
+        child: Icon(
+          isDebit ? Icons.arrow_upward : Icons.arrow_downward,
+          color: isDebit ? Colors.red : Colors.green,
+        ),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor:
-                isDebit ? Colors.red.withAlpha(30) : Colors.green.withAlpha(30),
-            child: Icon(
-              isDebit ? Icons.arrow_upward : Icons.arrow_downward,
-              color: isDebit ? Colors.red : Colors.green,
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tx.title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  DateFormat('MMM dd, yyyy').format(tx.date),
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            "${isDebit ? '-' : '+'} Rs ${tx.amount.toStringAsFixed(2)}",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isDebit ? Colors.red : Colors.green,
-            ),
-          ),
-        ],
+      title: Text(tx.title),
+      subtitle: Text(DateFormat('MMM dd, yyyy').format(tx.date)),
+      trailing: Text(
+        '${isDebit ? '-' : '+'} Rs ${tx.amount.toStringAsFixed(2)}',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: isDebit ? Colors.red : Colors.green,
+        ),
       ),
     );
   }

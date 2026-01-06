@@ -1,48 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../models/transaction_model.dart';
+import '../providers/transaction_provider.dart';
 
-class StatsScreen extends StatefulWidget {
-  final List<TransactionModel> transactions;
-
-  const StatsScreen({super.key, required this.transactions});
+class StatsScreen extends ConsumerStatefulWidget {
+  const StatsScreen({super.key});
 
   @override
-  State<StatsScreen> createState() => _StatsScreenState();
+  ConsumerState<StatsScreen> createState() => _StatsScreenState();
 }
 
-class _StatsScreenState extends State<StatsScreen> {
+class _StatsScreenState extends ConsumerState<StatsScreen> {
   int _selectedPeriodIndex = 4;
   final List<String> _periods = ['Day', 'Week', 'Month', 'Year', 'All'];
 
   @override
   Widget build(BuildContext context) {
-    if (widget.transactions.isEmpty) {
-      debugPrint("📊 STATS: No transactions received!");
-    } else {
-      debugPrint("📊 STATS: Received ${widget.transactions.length} transactions.");
-      debugPrint("📅 First Date: ${widget.transactions.last.date}");
-      debugPrint("📅 Last Date: ${widget.transactions.first.date}");
-    }
+    // ✅ READ FROM PROVIDER
+    final transactions = ref.watch(transactionProvider);
 
-    // ✅ FIXED: Filter only DEBIT transactions (expenses)
-    List<TransactionModel> periodExpenses = _getFilteredTransactions();
+    // Filter only expenses
+    final expenses =
+        transactions.where((tx) => tx.type == 'debit').toList();
 
-    double totalSpending =
-        periodExpenses.fold(0, (sum, item) => sum + item.amount);
+    final periodExpenses = _getFilteredTransactions(expenses);
 
-    Map<String, double> categoryTotals =
-        _calculateCategoryTotals(periodExpenses);
+    final totalSpending =
+        periodExpenses.fold(0.0, (sum, tx) => sum + tx.amount);
 
-    List<MapEntry<String, double>> sortedCategories =
-        categoryTotals.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
+    final categoryTotals = _calculateCategoryTotals(periodExpenses);
 
-    Map<int, double> weeklySpending =
-        _calculateWeeklySpending(periodExpenses);
+    final sortedCategories = categoryTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final weeklySpending = _calculateWeeklySpending(periodExpenses);
 
     double maxDaySpending =
-        weeklySpending.values.fold(0, (max, val) => val > max ? val : max);
+        weeklySpending.values.fold(0, (max, v) => v > max ? v : max);
     if (maxDaySpending == 0) maxDaySpending = 1;
 
     return Scaffold(
@@ -53,9 +48,11 @@ class _StatsScreenState extends State<StatsScreen> {
         title: const Text(
           'Statistics',
           style: TextStyle(
-              color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+            color: Colors.black,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        centerTitle: false,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -73,11 +70,9 @@ class _StatsScreenState extends State<StatsScreen> {
                 children: List.generate(_periods.length, (index) {
                   return Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedPeriodIndex = index;
-                        });
-                      },
+                      onTap: () => setState(() {
+                        _selectedPeriodIndex = index;
+                      }),
                       child: Container(
                         margin: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
@@ -128,15 +123,13 @@ class _StatsScreenState extends State<StatsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _buildBar('Mon', weeklySpending[1]! / maxDaySpending),
-                  _buildBar('Tue', weeklySpending[2]! / maxDaySpending),
-                  _buildBar('Wed', weeklySpending[3]! / maxDaySpending),
-                  _buildBar('Thu', weeklySpending[4]! / maxDaySpending),
-                  _buildBar('Fri', weeklySpending[5]! / maxDaySpending),
-                  _buildBar('Sat', weeklySpending[6]! / maxDaySpending),
-                  _buildBar('Sun', weeklySpending[7]! / maxDaySpending),
-                ],
+                children: List.generate(7, (i) {
+                  final day = i + 1;
+                  return _buildBar(
+                    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+                    weeklySpending[day]! / maxDaySpending,
+                  );
+                }),
               ),
             ),
 
@@ -146,22 +139,19 @@ class _StatsScreenState extends State<StatsScreen> {
               'Top Categories',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-
             const SizedBox(height: 20),
 
             if (sortedCategories.isEmpty)
               const Center(child: Text("No expenses for this period"))
             else
-              ...sortedCategories.map((entry) {
-                return _buildCategoryItem(
-                  icon: _getIconForCategory(entry.key),
-                  color: _getColorForCategory(entry.key),
-                  category: entry.key,
-                  amount: '-Rs ${entry.value.toStringAsFixed(0)}',
-                  percent:
-                      totalSpending == 0 ? 0 : entry.value / totalSpending,
-                );
-              }),
+              ...sortedCategories.map((e) => _buildCategoryItem(
+                    icon: _getIconForCategory(e.key),
+                    color: _getColorForCategory(e.key),
+                    category: e.key,
+                    amount: '-Rs ${e.value.toStringAsFixed(0)}',
+                    percent:
+                        totalSpending == 0 ? 0 : e.value / totalSpending,
+                  )),
           ],
         ),
       ),
@@ -170,43 +160,46 @@ class _StatsScreenState extends State<StatsScreen> {
 
   // ================= LOGIC =================
 
-  List<TransactionModel> _getFilteredTransactions() {
-    DateTime now = DateTime.now();
+  List<TransactionModel> _getFilteredTransactions(
+      List<TransactionModel> expenses) {
+    final now = DateTime.now();
 
-    // ✅ FIXED: Expense = debit
-    List<TransactionModel> expenses =
-        widget.transactions.where((tx) => tx.type == 'debit').toList();
-
-    if (_selectedPeriodIndex == 0) {
-      return expenses.where((tx) =>
-          tx.date.year == now.year &&
-          tx.date.month == now.month &&
-          tx.date.day == now.day).toList();
-    } else if (_selectedPeriodIndex == 1) {
-      return expenses.where((tx) => now.difference(tx.date).inDays < 7).toList();
-    } else if (_selectedPeriodIndex == 2) {
-      return expenses.where((tx) =>
-          tx.date.year == now.year &&
-          tx.date.month == now.month).toList();
-    } else if (_selectedPeriodIndex == 3) {
-      return expenses.where((tx) => tx.date.year == now.year).toList();
-    } else {
-      return expenses;
+    switch (_selectedPeriodIndex) {
+      case 0:
+        return expenses.where((tx) =>
+            tx.date.year == now.year &&
+            tx.date.month == now.month &&
+            tx.date.day == now.day).toList();
+      case 1:
+        return expenses
+            .where((tx) => now.difference(tx.date).inDays < 7)
+            .toList();
+      case 2:
+        return expenses.where((tx) =>
+            tx.date.year == now.year &&
+            tx.date.month == now.month).toList();
+      case 3:
+        return expenses
+            .where((tx) => tx.date.year == now.year)
+            .toList();
+      default:
+        return expenses;
     }
   }
 
-  Map<String, double> _calculateCategoryTotals(List<TransactionModel> txs) {
-    Map<String, double> totals = {};
-    for (var tx in txs) {
+  Map<String, double> _calculateCategoryTotals(
+      List<TransactionModel> txs) {
+    final Map<String, double> totals = {};
+    for (final tx in txs) {
       totals[tx.category] = (totals[tx.category] ?? 0) + tx.amount;
     }
     return totals;
   }
 
-  Map<int, double> _calculateWeeklySpending(List<TransactionModel> txs) {
-    Map<int, double> days = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
-
-    for (var tx in txs) {
+  Map<int, double> _calculateWeeklySpending(
+      List<TransactionModel> txs) {
+    final days = {for (int i = 1; i <= 7; i++) i: 0.0};
+    for (final tx in txs) {
       days[tx.date.weekday] =
           (days[tx.date.weekday] ?? 0) + tx.amount;
     }
@@ -258,7 +251,7 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Widget _buildBar(String label, double heightPct) {
-    if (heightPct.isNaN || heightPct.isInfinite) heightPct = 0;
+    if (!heightPct.isFinite) heightPct = 0;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,

@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../models/transaction_model.dart';
-import '../services/transaction_service.dart';
+import '../providers/transaction_provider.dart';
 import '../constants/categories.dart';
 
-class AddTransactionScreen extends StatefulWidget {
+class AddTransactionScreen extends ConsumerStatefulWidget {
   const AddTransactionScreen({super.key});
 
   @override
-  State<AddTransactionScreen> createState() => _AddTransactionScreenState();
+  ConsumerState<AddTransactionScreen> createState() =>
+      _AddTransactionScreenState();
 }
 
-class _AddTransactionScreenState extends State<AddTransactionScreen> {
+class _AddTransactionScreenState
+    extends ConsumerState<AddTransactionScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
 
   bool _isExpense = true;
   DateTime _selectedDate = DateTime.now();
-
   String _selectedCategory = ExpenseCategories.list.first;
 
   @override
@@ -58,7 +59,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// Toggle
+            // ================= TOGGLE =================
             Row(
               children: [
                 _toggle('Expense', true),
@@ -68,26 +69,29 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const SizedBox(height: 30),
 
-            /// Amount
+            // ================= AMOUNT =================
             const Text('Amount', style: TextStyle(color: Colors.grey)),
             TextField(
               controller: _amountController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+              ),
               decoration: const InputDecoration(prefixText: 'Rs '),
             ),
 
             const SizedBox(height: 20),
 
-            /// Date
+            // ================= DATE =================
             const Text('Date', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             GestureDetector(
               onTap: _pickDate,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 15, vertical: 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(15),
@@ -96,7 +100,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(DateFormat('MMM dd, yyyy').format(_selectedDate)),
+                    Text(DateFormat('MMM dd, yyyy')
+                        .format(_selectedDate)),
                     const Icon(Icons.calendar_month),
                   ],
                 ),
@@ -105,7 +110,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const SizedBox(height: 30),
 
-            /// Category Dropdown
+            // ================= CATEGORY =================
             const Text('Category',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
@@ -130,7 +135,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const SizedBox(height: 30),
 
-            /// Note
+            // ================= NOTE =================
             const Text('Note', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             TextField(
@@ -144,7 +149,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const SizedBox(height: 40),
 
-            /// Save
+            // ================= SAVE =================
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -166,27 +171,34 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
   }
 
-  void _save() async {
+  // ================= SAVE LOGIC =================
+
+  Future<void> _save() async {
     final amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) return;
 
     final tx = TransactionModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title:
-          _noteController.text.isEmpty ? _selectedCategory : _noteController.text,
+      title: _noteController.text.isEmpty
+          ? _selectedCategory
+          : _noteController.text,
       amount: amount,
       date: _selectedDate,
       category: _selectedCategory,
       type: _isExpense ? 'debit' : 'credit',
       source: 'manual',
       note: _noteController.text,
-      createdAt: Timestamp.now(),
+      createdAt: DateTime.now(),
     );
 
-    await TransactionService().addTransaction(tx);
+    // ✅ SINGLE SOURCE OF TRUTH
+    await ref.read(transactionProvider.notifier).addTransaction(tx);
+
     if (!mounted) return;
     Navigator.pop(context);
   }
+
+  // ================= TOGGLE =================
 
   Widget _toggle(String text, bool expense) {
     final selected = _isExpense == expense;

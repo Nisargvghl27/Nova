@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
 
-class WalletScreen extends StatelessWidget {
-  final List<TransactionModel> transactions;
-
-  const WalletScreen({super.key, required this.transactions});
+class WalletScreen extends ConsumerWidget {
+  const WalletScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // 🔹 Calculate balance from transactions
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transactions = ref.watch(transactionProvider);
+
     double balance = 0;
-    for (var tx in transactions) {
-      if (tx.type == 'debit') {
-        balance -= tx.amount;
-      } else {
-        balance += tx.amount;
-      }
+    for (final tx in transactions) {
+      tx.type == 'debit'
+          ? balance -= tx.amount
+          : balance += tx.amount;
     }
 
     return Scaffold(
@@ -25,7 +25,8 @@ class WalletScreen extends StatelessWidget {
         elevation: 0,
         title: const Text(
           'My Wallet',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style:
+              TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -34,12 +35,10 @@ class WalletScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1️⃣ Virtual Card (dynamic balance)
             _buildCreditCard(balance),
 
             const SizedBox(height: 30),
 
-            // 2️⃣ Action Buttons (future use)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -52,17 +51,19 @@ class WalletScreen extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            // 3️⃣ Recent Transactions
             const Text(
               'Recent Transactions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style:
+                  TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 15),
 
             if (transactions.isEmpty)
               const Center(child: Text("No transactions yet"))
             else
-              ...transactions.take(5).map((tx) => _buildTransactionItem(tx)),
+              ...transactions
+                  .take(5)
+                  .map((tx) => _buildTransactionItem(tx)),
           ],
         ),
       ),
@@ -83,13 +84,6 @@ class WalletScreen extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2575FC).withOpacity(0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,15 +123,9 @@ class WalletScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
           ),
-          child: Icon(icon, color: const Color(0xFF2575FC), size: 28),
+          child:
+              Icon(icon, color: const Color(0xFF2575FC), size: 28),
         ),
         const SizedBox(height: 10),
         Text(label, style: const TextStyle(color: Colors.grey)),
@@ -168,14 +156,16 @@ class WalletScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(tx.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                    style:
+                        const TextStyle(fontWeight: FontWeight.bold)),
                 Text(tx.category,
-                    style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                    style:
+                        TextStyle(color: Colors.grey[500], fontSize: 13)),
               ],
             ),
           ),
           Text(
-            (isDebit ? '-Rs ' : '+Rs ') + tx.amount.toStringAsFixed(0),
+            '${isDebit ? '-' : '+'}Rs ${tx.amount.toStringAsFixed(0)}',
             style: TextStyle(
               color: isDebit ? Colors.red : Colors.green,
               fontWeight: FontWeight.bold,
@@ -185,8 +175,6 @@ class WalletScreen extends StatelessWidget {
       ),
     );
   }
-
-  // ================= HELPERS =================
 
   IconData _getIcon(String category) {
     switch (category) {

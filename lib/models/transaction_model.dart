@@ -1,16 +1,41 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
+part 'transaction_model.g.dart';
+
+@HiveType(typeId: 0)
 class TransactionModel {
+  @HiveField(0)
   final String id;
-  final String title;        // Swiggy, Uber, Salary
+
+  @HiveField(1)
+  final String title; // Swiggy, Uber, Salary
+
+  @HiveField(2)
   final double amount;
+
+  @HiveField(3)
   final DateTime date;
-  final String category;     // Food, Travel, Bills, Other
-  final String type;         // debit | credit
-  final String source;       // manual | csv | sms
-  final String note;         // optional
-  final Timestamp createdAt;
-  final String fingerprint; // 🔹 NEW
+
+  @HiveField(4)
+  final String category; // Food, Travel, Bills, Other
+
+  @HiveField(5)
+  final String type; // debit | credit
+
+  @HiveField(6)
+  final String source; // manual | csv | sms
+
+  @HiveField(7)
+  final String note; // optional
+
+  /// ✅ Hive-safe (DO NOT use Timestamp in Hive)
+  @HiveField(8)
+  final DateTime createdAt;
+
+  /// 🔹 Used for duplicate detection (CSV / SMS / Firestore sync)
+  @HiveField(9)
+  final String fingerprint;
 
   TransactionModel({
     required this.id,
@@ -23,11 +48,13 @@ class TransactionModel {
     required this.note,
     required this.createdAt,
     String? fingerprint,
-  }) : fingerprint = fingerprint ?? _generateFingerprint(
-          date: date,
-          amount: amount,
-          title: title,
-        );
+  }) : fingerprint =
+            fingerprint ??
+            _generateFingerprint(
+              date: date,
+              amount: amount,
+              title: title,
+            );
 
   /// 🔹 Generate fingerprint (date + amount + title)
   static String _generateFingerprint({
@@ -40,26 +67,29 @@ class TransactionModel {
         '_${title.toLowerCase().trim()}';
   }
 
-  /// 🔹 Convert Firestore → Model
+  // ================= FIRESTORE → MODEL =================
+
   factory TransactionModel.fromMap(
     String id,
     Map<String, dynamic> data,
   ) {
     return TransactionModel(
       id: id,
-      title: data['title'],
+      title: data['title'] ?? '',
       amount: (data['amount'] as num).toDouble(),
       date: (data['date'] as Timestamp).toDate(),
-      category: data['category'],
-      type: data['type'],
-      source: data['source'],
+      category: data['category'] ?? 'Other',
+      type: data['type'] ?? 'debit',
+      source: data['source'] ?? 'manual',
       note: data['note'] ?? '',
-      createdAt: data['createdAt'],
-      fingerprint: data['fingerprint'], // 🔹 READ FROM FIRESTORE
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ??
+          DateTime.now(),
+      fingerprint: data['fingerprint'],
     );
   }
 
-  /// 🔹 Convert Model → Firestore
+  // ================= MODEL → FIRESTORE =================
+
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -69,8 +99,33 @@ class TransactionModel {
       'type': type,
       'source': source,
       'note': note,
-      'createdAt': createdAt,
-      'fingerprint': fingerprint, // 🔹 STORE IN FIRESTORE
+      'createdAt': Timestamp.fromDate(createdAt),
+      'fingerprint': fingerprint,
     };
+  }
+
+  // ================= COPY WITH (CRITICAL) =================
+
+  TransactionModel copyWith({
+    String? title,
+    double? amount,
+    DateTime? date,
+    String? category,
+    String? type,
+    String? source,
+    String? note,
+  }) {
+    return TransactionModel(
+      id: id,
+      title: title ?? this.title,
+      amount: amount ?? this.amount,
+      date: date ?? this.date,
+      category: category ?? this.category,
+      type: type ?? this.type,
+      source: source ?? this.source,
+      note: note ?? this.note,
+      createdAt: createdAt,
+      fingerprint: fingerprint, // ❗ NEVER regenerate
+    );
   }
 }

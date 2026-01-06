@@ -1,51 +1,41 @@
-// import 'package:flutter/material.dart';
-// import 'package:firebase_core/firebase_core.dart';
-// import 'firebase_options.dart';
-// import 'screens/splash_screen.dart'; // Ensure this file exists
-//
-// void main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   await Firebase.initializeApp(
-//     options: DefaultFirebaseOptions.currentPlatform,
-//   );
-//   runApp(const MyApp());
-// }
-//
-// class MyApp extends StatelessWidget {
-//   const MyApp({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'Nova',
-//       theme: ThemeData(
-//         primarySwatch: Colors.indigo,
-//         useMaterial3: false,
-//       ),
-//
-//       home: const SplashScreen(),
-//
-//       debugShowCheckedModeBanner: false,
-//     );
-//   }
-// }
-
-
-
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_screen.dart';
 
-void main() async {
+import 'models/transaction_model.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔹 Firebase Init
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+
+  // 🔹 Hive Init
+  await Hive.initFlutter();
+
+  // 🔹 Register Hive Adapters (ONLY ONCE)
+  if (!Hive.isAdapterRegistered(0)) {
+    Hive.registerAdapter(TransactionModelAdapter());
+  }
+
+  // 🔹 Open Hive Boxes
+  await Hive.openBox<TransactionModel>('transactions');
+
+  // 🔹 Riverpod Root
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -58,7 +48,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.indigo,
-        useMaterial3: true, // Updated to true for modern UI
+        useMaterial3: true,
       ),
       home: const AuthWrapper(),
     );
@@ -73,19 +63,19 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // 1. While Firebase is checking the login status, show Splash
+        // 🔹 Loading State
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SplashScreen();
         }
 
         final user = snapshot.data;
 
-        // 2. User logged in AND email verified → MainScreen
+        // 🔹 Logged in & verified
         if (user != null && user.emailVerified) {
           return const MainScreen();
         }
 
-        // 3. User not logged in OR email not verified → Login
+        // 🔹 Not logged in
         return const LoginScreen();
       },
     );

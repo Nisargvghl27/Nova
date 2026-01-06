@@ -781,18 +781,39 @@ class _RecentlyDeletedScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: isDark ? Colors.grey[700] : Colors.grey[300],
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: confirmColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                confirmText == 'Delete' ? Icons.delete_forever_rounded : Icons.restore_rounded,
+                color: confirmColor,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
               title,
               style: TextStyle(
@@ -801,7 +822,7 @@ class _RecentlyDeletedScreen extends StatelessWidget {
                 color: textColor,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               content,
               textAlign: TextAlign.center,
@@ -848,11 +869,11 @@ class _RecentlyDeletedScreen extends StatelessWidget {
                       color: confirmColor,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
-                         BoxShadow(
-                           color: confirmColor.withOpacity(0.3),
-                           blurRadius: 10,
-                           offset: const Offset(0, 4),
-                         ),
+                        BoxShadow(
+                          color: confirmColor.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
                     child: Material(
@@ -892,142 +913,257 @@ class _RecentlyDeletedScreen extends StatelessWidget {
     final textColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Recently Deleted'),
+        title: const Text(
+          'Recently Deleted',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: textColor,
       ),
-      // 🔹 STREAM BUILDER for Live Updates
       body: StreamBuilder<List<TransactionModel>>(
         stream: TransactionService().transactionsStream(),
         builder: (context, snapshot) {
-          // 1. Loading
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2. Data Processing
           final allTransactions = snapshot.data ?? [];
           final deletedTransactions = allTransactions
               .where((tx) => tx.isDeleted == true)
               .toList();
 
-          // 3. Empty State
           if (deletedTransactions.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.delete_outline_rounded,
-                      size: 60, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Trash is empty',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ),
-                ],
-              ),
-            );
+            return _buildEmptyState(isDark);
           }
 
-          // 4. List
           return ListView.builder(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             itemCount: deletedTransactions.length,
             physics: const BouncingScrollPhysics(),
             itemBuilder: (context, index) {
               final tx = deletedTransactions[index];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tx.title,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            DateFormat('MMM dd, yyyy').format(tx.date),
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // RESTORE BUTTON
-                    IconButton(
-                      onPressed: () {
-                        _showConfirmation(
-                          context,
-                          title: 'Restore Transaction?',
-                          content: 'This will move "${tx.title}" back to your main list.',
-                          confirmText: 'Restore',
-                          confirmColor: const Color(0xFF2575FC),
-                          onConfirm: () async {
-                            HapticFeedback.mediumImpact();
-                            await TransactionService().restoreTransaction(tx.id);
-                            if (context.mounted) {
-                              _showSnackBar(context, "Restored '${tx.title}'");
-                            }
-                          },
-                        );
-                      },
-                      icon: const Icon(Icons.restore_rounded,
-                          color: Color(0xFF2575FC)),
-                      tooltip: 'Restore',
-                    ),
-                    // DELETE PERMANENTLY BUTTON
-                    IconButton(
-                      onPressed: () {
-                         _showConfirmation(
-                          context,
-                          title: 'Delete Permanently?',
-                          content: 'This action cannot be undone. "${tx.title}" will be lost forever.',
-                          confirmText: 'Delete',
-                          confirmColor: Colors.red,
-                          onConfirm: () async {
-                            HapticFeedback.mediumImpact();
-                            await TransactionService().deletePermanently(tx.id);
-                            if (context.mounted) {
-                              _showSnackBar(context, "Deleted '${tx.title}' permanently");
-                            }
-                          },
-                        );
-                      },
-                      icon: const Icon(Icons.delete_forever_rounded,
-                          color: Colors.red),
-                      tooltip: 'Delete Permanently',
-                    ),
-                  ],
-                ),
-              );
+              return _buildDeletedItem(context, tx, index);
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isDark) {
+    return Center(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.8, end: 1.0),
+        duration: const Duration(seconds: 2),
+        curve: Curves.elasticOut,
+        builder: (context, value, child) {
+          return Transform.scale(
+            scale: value,
+            child: child,
+          );
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.delete_outline_rounded,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Trash is empty',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No deleted transactions found',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeletedItem(BuildContext context, TransactionModel tx, int index) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final style = CategoryStyle.getStyle(tx.category);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 30 * (1 - value)),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Category Icon
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                style.icon,
+                color: style.color.withOpacity(0.8), // Slightly faded for deleted items
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            
+            // Text Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tx.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: textColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        DateFormat('MMM dd').format(tx.date),
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '₹${tx.amount.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 12,
+                          decoration: TextDecoration.lineThrough, // Strikethrough for deleted amount
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Actions
+            Row(
+              children: [
+                _buildActionButton(
+                  context,
+                  icon: Icons.restore_rounded,
+                  color: const Color(0xFF2575FC),
+                  onTap: () {
+                    _showConfirmation(
+                      context,
+                      title: 'Restore?',
+                      content: 'Restore "${tx.title}" to your list.',
+                      confirmText: 'Restore',
+                      confirmColor: const Color(0xFF2575FC),
+                      onConfirm: () async {
+                        HapticFeedback.mediumImpact();
+                        await TransactionService().restoreTransaction(tx.id);
+                        if (context.mounted) {
+                          _showSnackBar(context, "Restored '${tx.title}'");
+                        }
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(width: 12),
+                _buildActionButton(
+                  context,
+                  icon: Icons.delete_forever_rounded,
+                  color: Colors.red,
+                  onTap: () {
+                    _showConfirmation(
+                      context,
+                      title: 'Delete Forever?',
+                      content: '"${tx.title}" will be lost permanently.',
+                      confirmText: 'Delete',
+                      confirmColor: Colors.red,
+                      onConfirm: () async {
+                        HapticFeedback.mediumImpact();
+                        await TransactionService().deletePermanently(tx.id);
+                        if (context.mounted) {
+                          _showSnackBar(context, "Permanently deleted '${tx.title}'");
+                        }
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(BuildContext context, {required IconData icon, required Color color, required VoidCallback onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 20,
+          ),
+        ),
       ),
     );
   }

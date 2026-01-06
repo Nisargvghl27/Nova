@@ -27,21 +27,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   String _selectedCategory = 'All';
   DateTimeRange? _dateRange;
 
-  final List<String> _categories = [
-    'All',
-    'Food',
-    'Travel',
-    'Bills',
-    'Shopping',
-    'Entertainment',
-    'Health',
-    'Other',
-  ];
-
+  // ---------------- FILTER LOGIC ----------------
   List<TransactionModel> get _filteredTransactions {
-    // 🔒 Create safe copy + sort latest first
-    List<TransactionModel> list = List.from(widget.transactions)
-      ..sort((a, b) => b.date.compareTo(a.date));
+    List<TransactionModel> list = widget.transactions;
 
     // 1. Search
     if (_searchQuery.isNotEmpty) {
@@ -54,16 +42,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
     // 2. Category Filter
     if (_selectedCategory != 'All') {
-      list =
-          list.where((tx) => tx.category == _selectedCategory).toList();
+      list = list.where((tx) => tx.category == _selectedCategory).toList();
     }
 
     // 3. Date range
     if (_dateRange != null) {
       list = list.where((tx) {
         return tx.date.isAfter(
-          _dateRange!.start.subtract(const Duration(days: 1)),
-        ) &&
+              _dateRange!.start.subtract(const Duration(days: 1)),
+            ) &&
             tx.date.isBefore(
               _dateRange!.end.add(const Duration(days: 1)),
             );

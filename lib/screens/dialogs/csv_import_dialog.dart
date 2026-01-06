@@ -18,6 +18,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
   bool _loading = false;
   bool _importing = false;
 
+  // ================= PICK CSV =================
   Future<void> _pickCsv() async {
     if (_loading) return;
 
@@ -31,7 +32,6 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
       }
 
       final parsed = await _csvService.parseCsv(file);
-
       if (!mounted) return;
 
       setState(() {
@@ -59,7 +59,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
 
       if (!mounted) return;
 
-      // ✅ Return success to parent screen
+      // ✅ return success to parent
       Navigator.pop(context, true);
     } catch (e) {
       debugPrint('CSV import failed: $e');
@@ -75,7 +75,6 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔹 Theme Colors
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dialogColor = Theme.of(context).cardColor;
     final textColor = isDark ? Colors.white : Colors.black87;
@@ -95,7 +94,11 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
               children: [
                 Text(
                   'Import CSV',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
                 IconButton(
                   icon: Icon(Icons.close, color: textColor),
@@ -107,7 +110,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
             const SizedBox(height: 10),
             Text(
               'Upload bank or wallet statement',
-              style: TextStyle(color: isDark ? Colors.white60 : Colors.grey),
+              style: TextStyle(
+                color: isDark ? Colors.white60 : Colors.grey,
+              ),
             ),
 
             const SizedBox(height: 25),
@@ -155,12 +160,23 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                     final tx = _preview[index];
                     return ListTile(
                       dense: true,
-                      title: Text(tx.title, style: TextStyle(color: textColor)),
-                      subtitle: Text(tx.category, style: TextStyle(color: isDark ? Colors.white60 : Colors.grey[600])),
-                      trailing: Text(
-                        '${tx.type == 'debit' ? '-' : '+'} Rs ${tx.amount.toStringAsFixed(0)}',
+                      title: Text(tx.title,
+                          style: TextStyle(color: textColor)),
+                      subtitle: Text(
+                        tx.category,
                         style: TextStyle(
-                          color: tx.type == 'debit' ? Colors.red : Colors.green,
+                          color: isDark
+                              ? Colors.white60
+                              : Colors.grey[600],
+                        ),
+                      ),
+                      trailing: Text(
+                        '${tx.type == 'debit' ? '-' : '+'} ₹${tx.amount.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: tx.type == 'debit'
+                              ? Colors.red
+                              : Colors.green,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     );
@@ -176,7 +192,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed:
-                  (_loading || _importing) ? null : _confirmImport,
+                      (_loading || _importing) ? null : _confirmImport,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     shape: RoundedRectangleBorder(

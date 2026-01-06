@@ -1,6 +1,241 @@
+// import 'package:flutter/material.dart';
+// import '../../../services/auth_service.dart';
+
+
+// class SignupScreen extends StatefulWidget {
+//   const SignupScreen({super.key});
+
+//   @override
+//   State<SignupScreen> createState() => _SignupScreenState();
+// }
+
+// class _SignupScreenState extends State<SignupScreen> {
+//   final _formKey = GlobalKey<FormState>();
+//   final _emailController = TextEditingController();
+//   final _passwordController = TextEditingController();
+//   final _confirmPasswordController = TextEditingController();
+
+//   bool _loading = false;
+
+//   Future<void> _signup() async {
+//   if (!_formKey.currentState!.validate()) return;
+
+//   if (_passwordController.text != _confirmPasswordController.text) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text("Passwords do not match")),
+//     );
+//     return;
+//   }
+
+//   setState(() => _loading = true);
+
+//   try {
+//     await AuthService().signUp(
+//       email: _emailController.text.trim(),
+//       password: _passwordController.text.trim(),
+//     );
+
+//     if (!mounted) return;
+
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(
+//         content: Text(
+//           "Verification email sent. Please verify and login.",
+//         ),
+//       ),
+//     );
+
+//     // ✅ GO BACK TO LOGIN (NOT MAIN SCREEN)
+//     Navigator.pop(context);
+
+//   } catch (e) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text(e.toString())),
+//     );
+//   }
+
+//   if (mounted) setState(() => _loading = false);
+// }
+
+
+//   @override
+//   void dispose() {
+//     _emailController.dispose();
+//     _passwordController.dispose();
+//     _confirmPasswordController.dispose();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.white,
+//       body: SingleChildScrollView(
+//         child: Column(
+//           children: [
+//             // ================= HEADER =================
+//             Container(
+//               height: 300,
+//               decoration: const BoxDecoration(
+//                 gradient: LinearGradient(
+//                   colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+//                   begin: Alignment.topLeft,
+//                   end: Alignment.bottomRight,
+//                 ),
+//                 borderRadius: BorderRadius.only(
+//                   bottomLeft: Radius.circular(60),
+//                 ),
+//               ),
+//               child: Center(
+//                 child: Column(
+//                   mainAxisAlignment: MainAxisAlignment.center,
+//                   children: [
+//                     const Icon(
+//                       Icons.auto_graph_rounded,
+//                       size: 70,
+//                       color: Colors.white,
+//                     ),
+//                     const SizedBox(height: 15),
+//                     const Text(
+//                       'Create Account',
+//                       style: TextStyle(
+//                         fontSize: 30,
+//                         color: Colors.white,
+//                         fontWeight: FontWeight.bold,
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+
+//             // ================= FORM =================
+//             Padding(
+//               padding: const EdgeInsets.all(30),
+//               child: Form(
+//                 key: _formKey,
+//                 child: Column(
+//                   children: [
+//                     // Email
+//                     TextFormField(
+//                       controller: _emailController,
+//                       decoration: InputDecoration(
+//                         labelText: 'Email',
+//                         prefixIcon: const Icon(Icons.email_outlined),
+//                         filled: true,
+//                         fillColor: Colors.grey[100],
+//                         border: OutlineInputBorder(
+//                           borderRadius: BorderRadius.circular(12),
+//                           borderSide: BorderSide.none,
+//                         ),
+//                       ),
+//                       validator: (value) {
+//                         if (value == null || !value.contains('@')) {
+//                           return 'Enter a valid email';
+//                         }
+//                         return null;
+//                       },
+//                     ),
+//                     const SizedBox(height: 20),
+
+//                     // Password
+//                     TextFormField(
+//                       controller: _passwordController,
+//                       obscureText: true,
+//                       decoration: InputDecoration(
+//                         labelText: 'Password',
+//                         prefixIcon: const Icon(Icons.lock_outline),
+//                         filled: true,
+//                         fillColor: Colors.grey[100],
+//                         border: OutlineInputBorder(
+//                           borderRadius: BorderRadius.circular(12),
+//                           borderSide: BorderSide.none,
+//                         ),
+//                       ),
+//                       validator: (value) {
+//                         if (value == null || value.length < 6) {
+//                           return 'Password must be at least 6 characters';
+//                         }
+//                         return null;
+//                       },
+//                     ),
+//                     const SizedBox(height: 20),
+
+//                     // Confirm Password
+//                     TextFormField(
+//                       controller: _confirmPasswordController,
+//                       obscureText: true,
+//                       decoration: InputDecoration(
+//                         labelText: 'Confirm Password',
+//                         prefixIcon: const Icon(Icons.lock_outline),
+//                         filled: true,
+//                         fillColor: Colors.grey[100],
+//                         border: OutlineInputBorder(
+//                           borderRadius: BorderRadius.circular(12),
+//                           borderSide: BorderSide.none,
+//                         ),
+//                       ),
+//                       validator: (value) {
+//                         if (value == null || value.isEmpty) {
+//                           return 'Confirm your password';
+//                         }
+//                         return null;
+//                       },
+//                     ),
+//                     const SizedBox(height: 30),
+
+//                     // SIGN UP BUTTON
+//                     Container(
+//                       width: double.infinity,
+//                       height: 50,
+//                       decoration: BoxDecoration(
+//                         gradient: const LinearGradient(
+//                           colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+//                         ),
+//                         borderRadius: BorderRadius.circular(12),
+//                       ),
+//                       child: ElevatedButton(
+//                         onPressed: _loading ? null : _signup,
+//                         style: ElevatedButton.styleFrom(
+//                           backgroundColor: Colors.transparent,
+//                           shadowColor: Colors.transparent,
+//                         ),
+//                         child: _loading
+//                             ? const CircularProgressIndicator(color: Colors.white)
+//                             : const Text(
+//                           'SIGN UP',
+//                           style: TextStyle(
+//                             fontSize: 16,
+//                             fontWeight: FontWeight.bold,
+//                             color: Colors.white,
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+
+//                     const SizedBox(height: 20),
+
+//                     // BACK TO LOGIN
+//                     TextButton(
+//                       onPressed: () => Navigator.pop(context),
+//                       child: const Text(
+//                         'Already have an account? Login',
+//                         style: TextStyle(color: Color(0xFF2575FC)),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
 import 'package:flutter/material.dart';
 import '../../../services/auth_service.dart';
-
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -18,45 +253,42 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _loading = false;
 
   Future<void> _signup() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  if (_passwordController.text != _confirmPasswordController.text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Passwords do not match")),
-    );
-    return;
-  }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords do not match")),
+      );
+      return;
+    }
 
-  setState(() => _loading = true);
+    setState(() => _loading = true);
 
-  try {
-    await AuthService().signUp(
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-    );
+    try {
+      await AuthService().signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          "Verification email sent. Please verify and login.",
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Verification email sent. Please verify and login.",
+          ),
         ),
-      ),
-    );
+      );
 
-    // ✅ GO BACK TO LOGIN (NOT MAIN SCREEN)
-    Navigator.pop(context);
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
 
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(e.toString())),
-    );
+    if (mounted) setState(() => _loading = false);
   }
-
-  if (mounted) setState(() => _loading = false);
-}
-
 
   @override
   void dispose() {
@@ -68,8 +300,14 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔹 Theme Colors
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final inputFillColor = isDark ? const Color(0xFF1E1E1E) : Colors.grey[100];
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -119,11 +357,13 @@ class _SignupScreenState extends State<SignupScreen> {
                     // Email
                     TextFormField(
                       controller: _emailController,
+                      style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: 'Email',
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600]),
+                        prefixIcon: Icon(Icons.email_outlined, color: isDark ? Colors.white70 : Colors.grey[600]),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: inputFillColor,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -142,11 +382,13 @@ class _SignupScreenState extends State<SignupScreen> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
+                      style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600]),
+                        prefixIcon: Icon(Icons.lock_outline, color: isDark ? Colors.white70 : Colors.grey[600]),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: inputFillColor,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -165,11 +407,13 @@ class _SignupScreenState extends State<SignupScreen> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: true,
+                      style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: 'Confirm Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600]),
+                        prefixIcon: Icon(Icons.lock_outline, color: isDark ? Colors.white70 : Colors.grey[600]),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: inputFillColor,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -203,13 +447,13 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: _loading
                             ? const CircularProgressIndicator(color: Colors.white)
                             : const Text(
-                          'SIGN UP',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                                'SIGN UP',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
 

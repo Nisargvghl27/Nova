@@ -20,13 +20,8 @@ class AuthService {
       final user = cred.user;
 
       if (user != null) {
-        // 🔹 Create Firestore user document
         await _createUserDocument(user);
-
-        // 🔹 Send email verification (EMAIL OTP LINK)
         await user.sendEmailVerification();
-
-        // 🔹 IMPORTANT: logout until email is verified
         await _auth.signOut();
       }
 
@@ -53,11 +48,9 @@ class AuthService {
         throw Exception("Login failed");
       }
 
-      // 🔄 Refresh user state
       await user.reload();
       final refreshedUser = _auth.currentUser!;
 
-      // 🔒 Block unverified users
       if (!refreshedUser.emailVerified) {
         await _auth.signOut();
         throw Exception("Please verify your email before logging in.");
@@ -66,6 +59,28 @@ class AuthService {
       return refreshedUser;
     } on FirebaseAuthException catch (e) {
       throw Exception(e.message);
+    }
+  }
+
+  // ---------------- UPDATE PROFILE (NEW) ----------------
+  Future<void> updateProfile({required String name}) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) throw Exception("No user logged in");
+
+      // 1. Update Firebase Auth Display Name
+      await user.updateDisplayName(name);
+      
+      // 2. Update Firestore User Document
+      await _firestore.collection('users').doc(user.uid).update({
+        'name': name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      // 3. Reload user to refresh local state
+      await user.reload();
+    } catch (e) {
+      throw Exception('Failed to update profile: $e');
     }
   }
 
@@ -101,47 +116,42 @@ class AuthService {
       'totalExpense': 0.0,
     });
   }
+
   // ---------------- GOOGLE SIGN IN ----------------
-Future<User?> signInWithGoogle() async {
-  try {
-    final GoogleSignIn googleSignIn = GoogleSignIn();
+  Future<User?> signInWithGoogle() async {
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
-    // Trigger Google Sign-In
-    final GoogleSignInAccount? googleUser =
-        await googleSignIn.signIn();
-
-    if (googleUser == null) {
-      return null; // user cancelled
-    }
-
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
-
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    final userCredential =
-        await _auth.signInWithCredential(credential);
-
-    final user = userCredential.user;
-
-    if (user != null) {
-      // Create Firestore doc if first time
-      final doc =
-          await _firestore.collection('users').doc(user.uid).get();
-
-      if (!doc.exists) {
-        await _createUserDocument(user);
+      if (googleUser == null) {
+        return null;
       }
-    }
 
-    return user;
-  } on FirebaseAuthException catch (e) {
-    throw Exception(e.message);
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
+
+      if (user != null) {
+        final doc =
+            await _firestore.collection('users').doc(user.uid).get();
+
+        if (!doc.exists) {
+          await _createUserDocument(user);
+        }
+      }
+
+      return user;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(e.message);
+    }
   }
-}
 
   // ---------------- CURRENT USER ----------------
   User? get currentUser => _auth.currentUser;

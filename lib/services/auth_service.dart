@@ -6,6 +6,7 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Initialize GoogleSignIn
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email'],
   );
@@ -66,22 +67,19 @@ class AuthService {
     }
   }
 
-  // ---------------- UPDATE PROFILE (NEW) ----------------
+  // ---------------- UPDATE PROFILE ----------------
   Future<void> updateProfile({required String name}) async {
     try {
       final user = _auth.currentUser;
       if (user == null) throw Exception("No user logged in");
 
-      // 1. Update Firebase Auth Display Name
       await user.updateDisplayName(name);
 
-      // 2. Update Firestore User Document
       await _firestore.collection('users').doc(user.uid).update({
         'name': name,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 3. Reload user to refresh local state
       await user.reload();
     } catch (e) {
       throw Exception('Failed to update profile: $e');
@@ -96,9 +94,13 @@ class AuthService {
     }
   }
 
-  // ---------------- LOGOUT ----------------
+  // ---------------- LOGOUT (UPDATED) ----------------
   Future<void> logout() async {
     try {
+      // 🔹 1. Sign out of Google to force account picker next time
+      await _googleSignIn.signOut(); 
+      
+      // 🔹 2. Sign out of Firebase
       await _auth.signOut();
     } catch (e) {
       print("Logout Error: $e");
@@ -113,7 +115,7 @@ class AuthService {
     await userRef.set({
       'uid': user.uid,
       'email': user.email,
-      'name': user.email!.split('@')[0],
+      'name': user.displayName ?? user.email!.split('@')[0],
       'createdAt': FieldValue.serverTimestamp(),
       'totalBalance': 0.0,
       'totalIncome': 0.0,
@@ -124,17 +126,16 @@ class AuthService {
   // ---------------- GOOGLE SIGN IN ----------------
   Future<User?> signInWithGoogle() async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      // 🔹 Force account selection in some cases, though signOut() usually handles it
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        return null;
+        return null; // User canceled
       }
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      // Fixed: Removed duplicate variable declaration here
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,

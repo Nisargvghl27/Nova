@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 🔹 Import this
 import '../services/auth_service.dart';
-import '../services/biometric_service.dart'; // 🔹 Biometric Service
+import '../services/biometric_service.dart'; 
 import 'edit_profile_screen.dart'; 
 import '../../main.dart'; // For themeNotifier
 
@@ -85,7 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               SliverPadding(
                 padding: const EdgeInsets.all(24),
                 sliver: SliverToBoxAdapter(
-                  // 🔹 Fixed: Removed redundant SingleChildScrollView
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -114,7 +114,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                         },
                       ),
                       
-                      // Placeholders for other items you had
                       _buildSettingItem(
                         icon: Icons.notifications_rounded,
                         title: 'Notifications',
@@ -144,7 +143,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                         onTap: () => _showComingSoonSnackBar(context),
                       ),
                       
-                      // 🔹 UPDATED BIOMETRIC WIDGET
                       _buildBiometricItem(index: 4, isDark: isDark),
                       
                       const SizedBox(height: 32),
@@ -191,7 +189,70 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // 🔹 The New Biometric Toggle Widget
+  // 隼 Theme Switch
+  Widget _buildThemeSwitch(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor, 
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Colors.indigo, Colors.blueAccent]),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.dark_mode_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Dark Mode',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: isDark,
+              onChanged: (val) async { // 🔹 Mark async
+                HapticFeedback.mediumImpact();
+                
+                // 1. Update State
+                themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
+                
+                // 2. Save to Storage
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('isDark', val);
+              },
+              activeColor: const Color(0xFF2575FC),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 隼 The Biometric Toggle Widget
   Widget _buildBiometricItem({required int index, required bool isDark}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -269,62 +330,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // 🔹 Theme Switch
-  Widget _buildThemeSwitch(bool isDark) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor, 
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Colors.indigo, Colors.blueAccent]),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.dark_mode_rounded, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Dark Mode',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Switch(
-              value: isDark,
-              onChanged: (val) {
-                HapticFeedback.mediumImpact();
-                themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
-              },
-              activeColor: const Color(0xFF2575FC),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ... (Rest of the ProfileScreen helper methods like _buildEditProfileButton, _buildSliverAppBar, etc., remain unchanged)
+  
+  // 🔹 RE-ADDING HELPER METHODS TO ENSURE FILE IS COMPLETE IF COPIED DIRECTLY
 
   Widget _buildEditProfileButton(BuildContext context, String currentName) {
     return Center(

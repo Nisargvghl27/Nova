@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
+import '../services/transaction_service.dart';
 
 class WalletScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -30,6 +31,137 @@ class _WalletScreenState extends State<WalletScreen>
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  // ---------------- DIALOGS ----------------
+
+  // 1. TOP UP DIALOG
+  void _showTopUpDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Top Up Wallet'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Amount',
+            prefixText: '₹ ',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = double.tryParse(controller.text);
+              if (amount == null || amount <= 0) return;
+              
+              Navigator.pop(ctx); 
+              try {
+                await TransactionService().topUpWallet(amount);
+                if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Top Up Successful!")));
+              } catch (e) {
+                if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+              }
+            },
+            child: const Text('Top Up'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 2. SEND MONEY DIALOG
+  void _showSendDialog() {
+    final emailCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Send Money'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Receiver Email'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: amountCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹ '),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = double.tryParse(amountCtrl.text);
+              final email = emailCtrl.text.trim();
+              if (amount == null || amount <= 0 || email.isEmpty) return;
+
+              Navigator.pop(ctx);
+              try {
+                await TransactionService().sendMoney(receiverEmail: email, amount: amount);
+                 if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Sent ₹$amount to $email")));
+              } catch (e) {
+                 if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed: $e"), backgroundColor: Colors.red));
+              }
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3. REQUEST MONEY DIALOG
+  void _showRequestDialog() {
+    final emailCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Request Money'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'From (Email)'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: amountCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹ '),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+               Navigator.pop(ctx);
+               try {
+                  await TransactionService().requestMoney(fromEmail: emailCtrl.text.trim(), amount: double.tryParse(amountCtrl.text) ?? 0);
+                  if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Request Sent!")));
+               } catch (e) {
+                  if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
+               }
+            },
+            child: const Text('Request'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -318,10 +450,32 @@ class _WalletScreenState extends State<WalletScreen>
 
   Widget _buildQuickActions() {
     final actions = [
-      {'icon': Icons.arrow_upward_rounded, 'label': 'Send', 'color': const Color(0xFF51CF66)},
-      {'icon': Icons.arrow_downward_rounded, 'label': 'Request', 'color': const Color(0xFF2575FC)},
-      {'icon': Icons.add_rounded, 'label': 'Top Up', 'color': const Color(0xFFFF6B6B)},
-      {'icon': Icons.grid_view_rounded, 'label': 'More', 'color': const Color(0xFFBA68C8)},
+      {
+        'icon': Icons.arrow_upward_rounded, 
+        'label': 'Send', 
+        'color': const Color(0xFF51CF66),
+        'onTap': _showSendDialog,
+      },
+      {
+        'icon': Icons.arrow_downward_rounded, 
+        'label': 'Request', 
+        'color': const Color(0xFF2575FC),
+        'onTap': _showRequestDialog,
+      },
+      {
+        'icon': Icons.add_rounded, 
+        'label': 'Top Up', 
+        'color': const Color(0xFFFF6B6B),
+        'onTap': _showTopUpDialog,
+      },
+      {
+        'icon': Icons.grid_view_rounded, 
+        'label': 'More', 
+        'color': const Color(0xFFBA68C8),
+        'onTap': () {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("More features coming soon!")));
+        }
+      },
     ];
 
     return TweenAnimationBuilder<double>(
@@ -353,6 +507,7 @@ class _WalletScreenState extends State<WalletScreen>
               action['icon'] as IconData,
               action['label'] as String,
               action['color'] as Color,
+              action['onTap'] as VoidCallback,
             ),
           );
         }).toList(),
@@ -360,29 +515,14 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, Color color) {
+  Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = Theme.of(context).cardColor;
 
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.info_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Text('$label feature coming soon!'),
-              ],
-            ),
-            backgroundColor: const Color(0xFF2575FC),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+        onTap();
       },
       child: Column(
         children: [
@@ -740,7 +880,6 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-  // ... (Icons and Colors methods same as existing)
   IconData _getIconForCategory(String category) {
      switch (category) {
       case 'Food': return Icons.restaurant_rounded;

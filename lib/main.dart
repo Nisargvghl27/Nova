@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 🔹 Import this
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/biometric_service.dart';
+import 'screens/biometric_lock_screen.dart'; // 🔹 Added Import
 
 // 1. Global Theme Notifier to manage state
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
@@ -74,7 +75,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// 🔹 UPDATED: Handles Biometric Lock Logic
+// 🔹 UPDATED: Handles Biometric Lock Logic with new UI
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -85,6 +86,7 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
   bool _isLocked = false;
+  bool _isAuthenticating = false;
 
   @override
   void initState() {
@@ -116,9 +118,22 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   /// 🔹 Trigger the native authentication prompt
   Future<void> _authenticate() async {
+    if (_isAuthenticating) return;
+    
+    setState(() => _isAuthenticating = true);
+    
+    // Slight delay to ensure UI builds before auth dialog pops up
+    await Future.delayed(const Duration(milliseconds: 200));
+
     final success = await BiometricService.authenticate();
-    if (success) {
-      setState(() => _isLocked = false);
+    
+    if (mounted) {
+      setState(() {
+        _isAuthenticating = false;
+        if (success) {
+          _isLocked = false;
+        }
+      });
     }
   }
 
@@ -136,36 +151,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
         final user = snapshot.data;
 
         if (user != null && user.emailVerified) {
-          // 🔒 SHOW LOCK SCREEN IF ENABLED
+          // 🔹 SHOW NEW LOCK SCREEN IF ENABLED
           if (_isLocked) {
-            return Scaffold(
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.lock_rounded, size: 64, color: Theme.of(context).primaryColor),
-                    const SizedBox(height: 24),
-                    Text(
-                      'App Locked',
-                      style: TextStyle(
-                        fontSize: 24, 
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyLarge?.color
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    ElevatedButton.icon(
-                      onPressed: _authenticate,
-                      icon: const Icon(Icons.fingerprint),
-                      label: const Text('Unlock'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return BiometricLockScreen(
+              onUnlock: _authenticate,
+              isAuthenticating: _isAuthenticating,
             );
           }
           return const MainScreen();

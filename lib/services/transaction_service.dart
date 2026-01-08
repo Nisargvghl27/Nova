@@ -1,266 +1,3 @@
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:firebase_auth/firebase_auth.dart';
-// import '../models/transaction_model.dart';
-
-// class TransactionService {
-//   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-//   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-//   String get _uid {
-//     final user = _auth.currentUser;
-//     if (user == null) {
-//       throw Exception("User not logged in");
-//     }
-//     return user.uid;
-//   }
-
-//   // 🔹 Helper: Get Current User Email
-//   String? get _currentUserEmail => _auth.currentUser?.email;
-
-//   CollectionReference<Map<String, dynamic>> get _txRef =>
-//       _firestore.collection('users').doc(_uid).collection('transactions');
-
-//   DocumentReference<Map<String, dynamic>> get _userRef =>
-//       _firestore.collection('users').doc(_uid);
-
-//   // ==========================================
-//   // 🔹 CORE: RECALCULATE STATS (The Dynamic Fix)
-//   // ==========================================
-//   Future<void> _recalculateUserStats() async {
-//     try {
-//       // 1. Get all active transactions (not deleted)
-//       final snapshot = await _txRef.where('isDeleted', isEqualTo: false).get();
-
-//       double income = 0;
-//       double expense = 0;
-
-//       for (var doc in snapshot.docs) {
-//         final data = doc.data();
-//         final double amount = (data['amount'] as num).toDouble();
-//         final String type = data['type']; // 'credit' or 'debit'
-
-//         if (type == 'credit') {
-//           income += amount;
-//         } else {
-//           expense += amount;
-//         }
-//       }
-
-//       final balance = income - expense;
-
-//       // 2. Update the main User Document in Firestore
-//       await _userRef.update({
-//         'totalIncome': income,
-//         'totalExpense': expense,
-//         'totalBalance': balance,
-//         'updatedAt': FieldValue.serverTimestamp(),
-//       });
-      
-//     } catch (e) {
-//       print("Error recalculating stats: $e");
-//     }
-//   }
-
-//   // ---------------- EXISTING METHODS (Updated) ----------------
-
-//   // 隼 CHECK DUPLICATE
-//   Future<bool> _exists(TransactionModel tx) async {
-//     final snapshot = await _txRef
-//         .where('fingerprint', isEqualTo: tx.fingerprint)
-//         .limit(1)
-//         .get();
-//     return snapshot.docs.isNotEmpty;
-//   }
-
-//   // 隼 ADD TRANSACTION
-//   Future<void> addTransaction(TransactionModel tx) async {
-//     final isDuplicate = await _exists(tx);
-//     if (isDuplicate) return;
-    
-//     await _txRef.add(tx.toMap());
-    
-//     // 🔄 Update Stats
-//     await _recalculateUserStats();
-//   }
-
-//   // 🔹 SOFT DELETE
-//   Future<void> deleteTransaction(String txId) async {
-//     await _txRef.doc(txId).update({'isDeleted': true});
-    
-//     // 🔄 Update Stats
-//     await _recalculateUserStats();
-//   }
-
-//   // 🔹 RESTORE
-//   Future<void> restoreTransaction(String txId) async {
-//     await _txRef.doc(txId).update({'isDeleted': false});
-    
-//     // 🔄 Update Stats
-//     await _recalculateUserStats();
-//   }
-
-//   // 🔹 PERMANENT DELETE
-//   Future<void> deletePermanently(String txId) async {
-//     await _txRef.doc(txId).delete();
-    
-//     // 🔄 Update Stats
-//     await _recalculateUserStats();
-//   }
-
-//   // 隼 UPDATE
-//   Future<void> updateTransaction(
-//     String txId,
-//     Map<String, dynamic> data,
-//   ) async {
-//     await _txRef.doc(txId).update(data);
-    
-//     // 🔄 Update Stats
-//     await _recalculateUserStats();
-//   }
-
-//   // 隼 STREAM
-//   Stream<List<TransactionModel>> transactionsStream() {
-//     return _txRef
-//         .orderBy('date', descending: true)
-//         .snapshots()
-//         .map((snapshot) {
-//       return snapshot.docs
-//           .map((doc) => TransactionModel.fromMap(doc.id, doc.data()))
-//           .toList();
-//     });
-//   }
-  
-//   // 隼 BATCH IMPORT (CSV/SMS)
-//   Future<void> addTransactionsBatch(List<TransactionModel> txs) async {
-//     final batch = FirebaseFirestore.instance.batch();
-//     for (final tx in txs) {
-//       final docRef = _txRef.doc();
-//       batch.set(docRef, tx.toMap());
-//     }
-//     await batch.commit();
-    
-//     // 🔄 Update Stats
-//     await _recalculateUserStats();
-//   }
-
-//   // ---------------- WALLET METHODS ----------------
-
-//   // 2. 🔹 TOP UP WALLET
-//   Future<void> topUpWallet(double amount) async {
-//     final tx = TransactionModel(
-//       id: DateTime.now().millisecondsSinceEpoch.toString(),
-//       title: 'Wallet Top Up',
-//       amount: amount,
-//       date: DateTime.now(),
-//       category: 'Income', 
-//       type: 'credit',
-//       source: 'manual',
-//       note: 'Self Top Up',
-//       createdAt: Timestamp.now(),
-//     );
-//     await addTransaction(tx); // This already calls recalculate
-//   }
-
-//   // 3. 🔹 SEND MONEY (Transfer)
-//   Future<void> sendMoney({required String receiverEmail, required double amount}) async {
-//     final senderEmail = _currentUserEmail;
-//     if (senderEmail == null) throw Exception("You are not logged in");
-//     if (senderEmail == receiverEmail) throw Exception("Cannot send money to yourself");
-
-//     // A. Find Receiver
-//     final userQuery = await _firestore
-//         .collection('users')
-//         .where('email', isEqualTo: receiverEmail)
-//         .limit(1)
-//         .get();
-
-//     if (userQuery.docs.isEmpty) {
-//       throw Exception("User with email $receiverEmail not found");
-//     }
-
-//     final receiverDoc = userQuery.docs.first;
-//     final receiverUid = receiverDoc.id;
-
-//     // B. Create Transaction IDs
-//     final now = DateTime.now();
-//     final senderTxId = now.millisecondsSinceEpoch.toString();
-//     final receiverTxId = "${now.millisecondsSinceEpoch}_rec";
-
-//     // C. Create Models
-//     final senderTx = TransactionModel(
-//       id: senderTxId,
-//       title: 'Sent to $receiverEmail',
-//       amount: amount,
-//       date: now,
-//       category: 'Others',
-//       type: 'debit',
-//       source: 'wallet',
-//       note: 'Transfer to $receiverEmail',
-//       createdAt: Timestamp.now(),
-//     );
-
-//     final receiverTx = TransactionModel(
-//       id: receiverTxId,
-//       title: 'Received from $senderEmail',
-//       amount: amount,
-//       date: now,
-//       category: 'Income',
-//       type: 'credit',
-//       source: 'wallet',
-//       note: 'Transfer from $senderEmail',
-//       createdAt: Timestamp.now(),
-//     );
-
-//     // D. Perform Batch Write
-//     final batch = _firestore.batch();
-
-//     // 1. Add Tx to Sender
-//     final senderTxRef = _txRef.doc(senderTxId);
-//     batch.set(senderTxRef, senderTx.toMap());
-
-//     // 2. Add Tx to Receiver
-//     final receiverTxRef = _firestore
-//         .collection('users')
-//         .doc(receiverUid)
-//         .collection('transactions')
-//         .doc(receiverTxId);
-//     batch.set(receiverTxRef, receiverTx.toMap());
-
-//     // 3. Update Receiver Stats Directly (Atomic Increment)
-//     // We do this so the receiver's DB updates immediately without them needing to open the app
-//     final receiverUserRef = _firestore.collection('users').doc(receiverUid);
-//     batch.update(receiverUserRef, {
-//       'totalIncome': FieldValue.increment(amount),
-//       'totalBalance': FieldValue.increment(amount),
-//     });
-
-//     await batch.commit();
-
-//     // 4. Update Sender Stats (Recalculate to be safe)
-//     await _recalculateUserStats();
-//   }
-
-//   // 4. 🔹 REQUEST MONEY
-//   Future<void> requestMoney({required String fromEmail, required double amount}) async {
-//     final senderEmail = _currentUserEmail;
-//     if (senderEmail == null) return;
-    
-//     // Check if user exists
-//     final userQuery = await _firestore
-//         .collection('users')
-//         .where('email', isEqualTo: fromEmail)
-//         .limit(1)
-//         .get();
-
-//     if (userQuery.docs.isEmpty) {
-//       throw Exception("User $fromEmail not found");
-//     }
-    
-//     // Success (No DB write for requests in this version)
-//     return;
-//   }
-// }
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/transaction_model.dart';
@@ -452,9 +189,10 @@ class TransactionService {
     // Write to THEIR notifications
     await _firestore.collection('users').doc(targetUid).collection('notifications').add({
       'type': 'money_request',
-      'fromEmail': senderEmail, // Who is asking (Me)
+      'fromEmail': senderEmail,
       'amount': amount,
       'status': 'pending',
+      'isRead': false, // 🔹 FIX: Added this field so the query finds it!
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -469,7 +207,23 @@ class TransactionService {
         .snapshots();
   }
 
-  // 3. Handle Request (Accept/Decline)
+  // 3. Mark As Read 🔹 NEW METHOD
+  Future<void> markNotificationsAsRead() async {
+    final batch = _firestore.batch();
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('notifications')
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    for (var doc in snapshot.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+    await batch.commit();
+  }
+
+  // 4. Handle Request (Accept/Decline)
   Future<void> handleRequest(String docId, bool accept, Map<String, dynamic> data) async {
     if (accept) {
       final String requesterEmail = data['fromEmail'];

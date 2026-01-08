@@ -1,10 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../services/transaction_service.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  
+  @override
+  void initState() {
+    super.initState();
+    // 🔹 Mark all as read when screen opens
+    TransactionService().markNotificationsAsRead();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +37,6 @@ class NotificationsScreen extends StatelessWidget {
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // 🔹 This listens to the collection shown in your screenshot
         stream: TransactionService().getNotificationsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {

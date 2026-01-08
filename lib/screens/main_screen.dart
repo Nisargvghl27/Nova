@@ -43,7 +43,6 @@ class _MainScreenState extends State<MainScreen> {
           );
         }
 
-        // 🔹 SPLIT INTO ACTIVE AND DELETED
         final List<TransactionModel> allTransactions = snapshot.data ?? [];
         final List<TransactionModel> activeTransactions = 
             allTransactions.where((tx) => !tx.isDeleted).toList();
@@ -71,20 +70,22 @@ class _MainScreenState extends State<MainScreen> {
             totalIncome: income,
             totalExpense: expense,
             onDelete: (id) => TransactionService().deleteTransaction(id),
-            onUndo: () {}, // Deprecated, but kept for interface compatibility
+            onUndo: () {}, 
+            // 🔹 NAVIGATE TO PROFILE TAB (Index 4)
+            onProfileTap: () => _onItemTapped(4), 
           ),
 
           // TRANSACTIONS (Active + Deleted list passed)
           TransactionsScreen(
             transactions: activeTransactions,
-            deletedTransactions: deletedTransactions, // 🔹 Pass deleted list
+            deletedTransactions: deletedTransactions, 
             onDelete: (id) => TransactionService().deleteTransaction(id),
           ),
 
-          // WALLET (Active only)
+          // WALLET
           WalletScreen(transactions: activeTransactions),
 
-          // STATS (Active only)
+          // STATS
           StatsScreen(transactions: activeTransactions),
 
           // PROFILE

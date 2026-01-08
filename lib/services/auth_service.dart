@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -5,15 +7,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email'],
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
 
   // ================= CURRENT USER =================
   User? get currentUser => _auth.currentUser;
 
-  // ================= SIGN UP (EMAIL) =================
+  // ================= SIGN UP =================
   Future<User?> signUp({
     required String email,
     required String password,
@@ -23,22 +22,19 @@ class AuthService {
         email: email,
         password: password,
       );
-
       final user = cred.user;
-
       if (user != null) {
         await _createUserDocument(user);
         await user.sendEmailVerification();
         await _auth.signOut();
       }
-
       return user;
     } on FirebaseAuthException catch (e) {
       throw Exception(e.message ?? "Signup failed");
     }
   }
 
-  // ================= LOGIN (EMAIL) =================
+  // ================= LOGIN =================
   Future<User?> login({
     required String email,
     required String password,
@@ -48,7 +44,6 @@ class AuthService {
         email: email,
         password: password,
       );
-
       final user = cred.user;
       if (user == null) throw Exception("Login failed");
 
@@ -59,46 +54,90 @@ class AuthService {
         await _auth.signOut();
         throw Exception("Please verify your email before logging in.");
       }
-
       return refreshedUser;
     } on FirebaseAuthException catch (e) {
       throw Exception(e.message);
     }
   }
 
-  // ---------------- UPDATE PROFILE (NEW) ----------------
-  Future<void> updateProfile({required String name}) async {
+  // ---------------- UPDATE PROFILE (Extended) ----------------
+  Future<void> updateProfile({
+    required String name,
+    String? phone,
+    String? bio,
+    String? location,
+    String? dob,
+    String? profession,
+    String? username,
+  }) async {
     try {
       final user = _auth.currentUser;
       if (user == null) throw Exception("No user logged in");
 
-      // 1. Update Firebase Auth Display Name
+      // 1. Update Auth Display Name
       await user.updateDisplayName(name);
 
-      // 2. Update Firestore User Document
-      await _firestore.collection('users').doc(user.uid).update({
+      // 2. Prepare Firestore Data
+      final Map<String, dynamic> data = {
         'name': name,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
 
-      // 3. Reload user to refresh local state
+      if (phone != null) data['phone'] = phone;
+      if (bio != null) data['bio'] = bio;
+      if (location != null) data['location'] = location;
+      if (dob != null) data['dob'] = dob;
+      if (profession != null) data['profession'] = profession;
+      if (username != null) data['username'] = username;
+
+      // 3. Update Firestore Document
+      await _firestore.collection('users').doc(user.uid).set(data, SetOptions(merge: true));
+
       await user.reload();
     } catch (e) {
       throw Exception('Failed to update profile: $e');
     }
   }
 
-  // ---------------- RESEND VERIFICATION EMAIL ----------------
-  Future<void> resendVerificationEmail() async {
-    final user = _auth.currentUser;
-    if (user != null && !user.emailVerified) {
-      await user.sendEmailVerification();
+  // ---------------- SAVE IMAGE AS BASE64 ----------------
+  Future<void> saveProfileImageAsBase64(File imageFile) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      final bytes = await imageFile.readAsBytes();
+      final String base64Image = base64Encode(bytes);
+
+      await _firestore.collection('users').doc(user.uid).update({
+        'base64Photo': base64Image,
+        'photoUrl': null, 
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to save image: $e');
+    }
+  }
+
+  // ---------------- DELETE PROFILE IMAGE (NEW) ----------------
+  Future<void> deleteProfileImage() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      await _firestore.collection('users').doc(user.uid).update({
+        'base64Photo': FieldValue.delete(),
+        'photoUrl': FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to delete image: $e');
     }
   }
 
   // ---------------- LOGOUT ----------------
   Future<void> logout() async {
     try {
+      await _googleSignIn.signOut();
       await _auth.signOut();
     } catch (e) {
       print("Logout Error: $e");
@@ -109,32 +148,32 @@ class AuthService {
   // ---------------- CREATE USER DOC ----------------
   Future<void> _createUserDocument(User user) async {
     final userRef = _firestore.collection('users').doc(user.uid);
-
     await userRef.set({
       'uid': user.uid,
       'email': user.email,
-      'name': user.email!.split('@')[0],
+      'name': user.displayName ?? user.email!.split('@')[0],
       'createdAt': FieldValue.serverTimestamp(),
       'totalBalance': 0.0,
       'totalIncome': 0.0,
       'totalExpense': 0.0,
+      'phone': '',
+      'bio': '',
+      'location': '',
+      'profession': '',
+      'username': '',
+      'dob': '',
     });
   }
 
   // ---------------- GOOGLE SIGN IN ----------------
   Future<User?> signInWithGoogle() async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-
-      if (googleUser == null) {
-        return null;
-      }
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      // Fixed: Removed duplicate variable declaration here
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -144,17 +183,21 @@ class AuthService {
       final user = userCredential.user;
 
       if (user != null) {
-        final doc =
-            await _firestore.collection('users').doc(user.uid).get();
-
+        final doc = await _firestore.collection('users').doc(user.uid).get();
         if (!doc.exists) {
           await _createUserDocument(user);
         }
       }
-
       return user;
     } on FirebaseAuthException catch (e) {
       throw Exception(e.message);
+    }
+  }
+  
+  Future<void> resendVerificationEmail() async {
+    final user = _auth.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
     }
   }
 }

@@ -35,44 +35,7 @@ class _WalletScreenState extends State<WalletScreen>
 
   // ---------------- DIALOGS ----------------
 
-  // 1. TOP UP DIALOG
-  void _showTopUpDialog() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Top Up Wallet'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Amount',
-            prefixText: '₹ ',
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final amount = double.tryParse(controller.text);
-              if (amount == null || amount <= 0) return;
-              
-              Navigator.pop(ctx); 
-              try {
-                await TransactionService().topUpWallet(amount);
-                if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Top Up Successful!")));
-              } catch (e) {
-                if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-              }
-            },
-            child: const Text('Top Up'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 2. SEND MONEY DIALOG
+  // 1. SEND MONEY DIALOG
   void _showSendDialog() {
     final emailCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
@@ -120,7 +83,7 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-  // 3. REQUEST MONEY DIALOG
+  // 2. REQUEST MONEY DIALOG
   void _showRequestDialog() {
     final emailCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
@@ -462,20 +425,6 @@ class _WalletScreenState extends State<WalletScreen>
         'color': const Color(0xFF2575FC),
         'onTap': _showRequestDialog,
       },
-      {
-        'icon': Icons.add_rounded, 
-        'label': 'Top Up', 
-        'color': const Color(0xFFFF6B6B),
-        'onTap': _showTopUpDialog,
-      },
-      {
-        'icon': Icons.grid_view_rounded, 
-        'label': 'More', 
-        'color': const Color(0xFFBA68C8),
-        'onTap': () {
-           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("More features coming soon!")));
-        }
-      },
     ];
 
     return TweenAnimationBuilder<double>(
@@ -489,25 +438,28 @@ class _WalletScreenState extends State<WalletScreen>
         );
       },
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center, // Center aligned
         children: actions.asMap().entries.map((entry) {
           final index = entry.key;
           final action = entry.value;
-          return TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: Duration(milliseconds: 700 + (index * 100)),
-            curve: Curves.easeOutCubic,
-            builder: (context, animValue, child) {
-              return Transform.scale(
-                scale: 0.8 + (animValue * 0.2),
-                child: Opacity(opacity: animValue, child: child),
-              );
-            },
-            child: _buildActionButton(
-              action['icon'] as IconData,
-              action['label'] as String,
-              action['color'] as Color,
-              action['onTap'] as VoidCallback,
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20), // Spacing
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: Duration(milliseconds: 700 + (index * 100)),
+              curve: Curves.easeOutCubic,
+              builder: (context, animValue, child) {
+                return Transform.scale(
+                  scale: 0.8 + (animValue * 0.2),
+                  child: Opacity(opacity: animValue, child: child),
+                );
+              },
+              child: _buildActionButton(
+                action['icon'] as IconData,
+                action['label'] as String,
+                action['color'] as Color,
+                action['onTap'] as VoidCallback,
+              ),
             ),
           );
         }).toList(),

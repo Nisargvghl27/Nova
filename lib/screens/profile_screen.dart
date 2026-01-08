@@ -6,8 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
 import 'edit_profile_screen.dart';
-import '../../main.dart'; // For themeNotifier
-import 'notifications_screen.dart'; // 🔹 Imported from incoming change
+import '../../main.dart'; 
+import 'notifications_screen.dart'; 
+// ⬇️ IMPORT THE NEW SCREEN
+import 'budget_prediction_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onWalletTap;
@@ -37,7 +39,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     _loadBiometricSettings();
   }
 
-  /// Load the saved biometric preference
   Future<void> _loadBiometricSettings() async {
     final enabled = await BiometricService.isEnabled();
     if (mounted) {
@@ -67,7 +68,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           .doc(user.uid)
           .snapshots(),
       builder: (context, snapshot) {
-        // Safe data extraction from HEAD (more robust)
         String userName = user.displayName ?? 'User';
         if (snapshot.hasData && snapshot.data!.data() != null) {
           final data = snapshot.data!.data() as Map<String, dynamic>;
@@ -97,13 +97,34 @@ class _ProfileScreenState extends State<ProfileScreen>
                           'General', Icons.settings_rounded, textColor),
                       const SizedBox(height: 16),
                       _buildThemeSwitch(isDark),
+                      
+                      // ⬇️ BUDGET PLANNER ITEM
+                      _buildSettingItem(
+                        icon: Icons.pie_chart_rounded,
+                        title: 'Budget Planner',
+                        subtitle: 'Set limits & predictions',
+                        color1: const Color(0xFF11998e),
+                        color2: const Color(0xFF38ef7d),
+                        index: 0,
+                        isDark: isDark,
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const BudgetPredictionScreen(),
+                            ),
+                          );
+                        },
+                      ),
+
                       _buildSettingItem(
                         icon: Icons.account_balance_wallet_rounded,
                         title: 'My Wallet',
                         subtitle: 'View all transactions',
                         color1: const Color(0xFF6A11CB),
                         color2: const Color(0xFF2575FC),
-                        index: 0,
+                        index: 1,
                         isDark: isDark,
                         onTap: () {
                           HapticFeedback.lightImpact();
@@ -113,14 +134,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                         },
                       ),
 
-                      // 🔹 MERGED: Updated Notifications Item with Navigation
                       _buildSettingItem(
                         icon: Icons.notifications_rounded,
                         title: 'Notifications',
-                        subtitle: 'View payment requests', // Updated text
+                        subtitle: 'View payment requests',
                         color1: const Color(0xFFFF6B6B),
                         color2: const Color(0xFFFF8E53),
-                        index: 1,
+                        index: 2,
                         isDark: isDark,
                         onTap: () {
                           HapticFeedback.lightImpact();
@@ -149,7 +169,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                         onTap: () => _showComingSoonSnackBar(context),
                       ),
 
-                      // Kept detailed biometric item from HEAD
                       _buildBiometricItem(index: 4, isDark: isDark),
 
                       const SizedBox(height: 32),
@@ -197,7 +216,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // 🔹 Theme Switch
+  // ... (Keep existing helpers: _buildThemeSwitch, _buildBiometricItem, _buildEditProfileButton, _buildSliverAppBar, _buildStatsCards, _buildStatCard, _buildSectionHeader, _buildSettingItem, _buildLogoutButton, _buildAppVersion, _showLogoutConfirmation, _showComingSoonSnackBar, _showInfoSnackBar)
+  // [INCLUDE ALL PREVIOUS HELPER METHODS HERE TO AVOID ERRORS]
+  
+  // ⬇️ RE-INCLUDED HELPER METHODS FOR COMPLETENESS:
   Widget _buildThemeSwitch(bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -241,11 +263,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               value: isDark,
               onChanged: (val) async {
                 HapticFeedback.mediumImpact();
-
-                // 1. Update State
                 themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
-
-                // 2. Save to Storage
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setBool('isDark', val);
               },
@@ -257,7 +275,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // 🔹 Biometric Toggle Widget (Kept HEAD version for consistent UI)
   Widget _buildBiometricItem({required int index, required bool isDark}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -312,22 +329,12 @@ class _ProfileScreenState extends State<ProfileScreen>
             value: _biometricEnabled,
             onChanged: (val) async {
               HapticFeedback.mediumImpact();
-
-              // 1. Authenticate to confirm it's the user
               bool authenticated = await BiometricService.authenticate();
-
               if (authenticated) {
-                // 2. Save preference
                 await BiometricService.setEnabled(val);
                 setState(() => _biometricEnabled = val);
-
-                // 3. Feedback
                 if (mounted) {
-                  _showInfoSnackBar(
-                      context,
-                      val
-                          ? 'Biometric Login Enabled'
-                          : 'Biometric Login Disabled');
+                  _showInfoSnackBar(context, val ? 'Biometric Login Enabled' : 'Biometric Login Disabled');
                 }
               }
             },
@@ -369,7 +376,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ),
               );
-              // Force rebuild when returning to show updated data
               if (mounted) setState(() {});
             },
             borderRadius: BorderRadius.circular(26),
@@ -396,8 +402,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildSliverAppBar(
-      String userName, String userEmail, String? photoUrl) {
+  Widget _buildSliverAppBar(String userName, String userEmail, String? photoUrl) {
     return SliverAppBar(
       expandedHeight: MediaQuery.of(context).size.height * 0.35,
       pinned: false,
@@ -431,22 +436,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
                 SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const SizedBox(height: 28),
                         CircleAvatar(
                           radius: 52,
-                          backgroundImage:
-                              photoUrl != null ? NetworkImage(photoUrl) : null,
+                          backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
                           backgroundColor: Colors.white,
                           child: photoUrl == null
                               ? Text(
-                                  userName.isNotEmpty
-                                      ? userName[0].toUpperCase()
-                                      : 'U',
+                                  userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
                                   style: const TextStyle(
                                     fontSize: 48,
                                     fontWeight: FontWeight.w800,
@@ -466,17 +467,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             userEmail,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ],
@@ -494,53 +492,18 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildStatsCards(bool isDark) {
     final cardColor = Theme.of(context).cardColor;
     final textColor = isDark ? Colors.white : Colors.black87;
-
     return Row(
       children: [
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.receipt_long_rounded,
-            label: 'Transactions',
-            value: '124',
-            color: const Color(0xFF2575FC),
-            bgColor: cardColor,
-            textColor: textColor,
-          ),
-        ),
+        Expanded(child: _buildStatCard(icon: Icons.receipt_long_rounded, label: 'Transactions', value: '124', color: const Color(0xFF2575FC), bgColor: cardColor, textColor: textColor)),
         const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.category_rounded,
-            label: 'Categories',
-            value: '8',
-            color: const Color(0xFFFF6B6B),
-            bgColor: cardColor,
-            textColor: textColor,
-          ),
-        ),
+        Expanded(child: _buildStatCard(icon: Icons.category_rounded, label: 'Categories', value: '8', color: const Color(0xFFFF6B6B), bgColor: cardColor, textColor: textColor)),
         const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.calendar_today_rounded,
-            label: 'Days Active',
-            value: '45',
-            color: const Color(0xFF51CF66),
-            bgColor: cardColor,
-            textColor: textColor,
-          ),
-        ),
+        Expanded(child: _buildStatCard(icon: Icons.calendar_today_rounded, label: 'Days Active', value: '45', color: const Color(0xFF51CF66), bgColor: cardColor, textColor: textColor)),
       ],
     );
   }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-    required Color bgColor,
-    required Color textColor,
-  }) {
+  Widget _buildStatCard({required IconData icon, required String label, required String value, required Color color, required Color bgColor, required Color textColor}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
@@ -565,20 +528,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: textColor,
-            ),
-          ),
+          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: textColor)),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-          ),
+          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600]), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -596,28 +548,12 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: Icon(icon, size: 18, color: const Color(0xFF2575FC)),
         ),
         const SizedBox(width: 12),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: textColor,
-          ),
-        ),
+        Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: textColor)),
       ],
     );
   }
 
-  Widget _buildSettingItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color1,
-    required Color color2,
-    required int index,
-    required VoidCallback onTap,
-    required bool isDark,
-  }) {
+  Widget _buildSettingItem({required IconData icon, required String title, required String subtitle, required Color color1, required Color color2, required int index, required VoidCallback onTap, required bool isDark}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -660,27 +596,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                      ),
+                      Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black87)),
                       const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white70 : Colors.grey[600],
-                        ),
-                      ),
+                      Text(subtitle, style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey[600])),
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios,
-                    size: 14, color: Colors.grey),
+                const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
               ],
             ),
           ),
@@ -709,14 +631,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               children: [
                 Icon(Icons.logout_rounded, color: Colors.red[600], size: 22),
                 const SizedBox(width: 10),
-                Text(
-                  'Log Out',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.red[600],
-                  ),
-                ),
+                Text('Log Out', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.red[600])),
               ],
             ),
           ),
@@ -726,16 +641,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildAppVersion() {
-    return Center(
-      child: Text(
-        'Version 1.0.0',
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.grey[400],
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
+    return Center(child: Text('Version 1.0.0', style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w500)));
   }
 
   void _showLogoutConfirmation(BuildContext context) {
@@ -752,10 +658,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Log Out?',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
+            const Text('Log Out?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
             const Text('Are you sure you want to log out of your account?'),
             const SizedBox(height: 32),
@@ -764,21 +667,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Expanded(
                   child: Container(
                     height: 52,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(16)),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () => Navigator.pop(context),
                         borderRadius: BorderRadius.circular(16),
-                        child: const Center(
-                          child: Text('Cancel',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black)),
-                        ),
+                        child: const Center(child: Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))),
                       ),
                     ),
                   ),
@@ -792,13 +687,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       fixedSize: const Size.fromHeight(52),
                     ),
-                    child: const Text('Log Out',
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text('Log Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -812,13 +704,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _showComingSoonSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.info_outline, color: Colors.white),
-            SizedBox(width: 12),
-            Text('Feature coming soon!'),
-          ],
-        ),
+        content: const Row(children: [Icon(Icons.info_outline, color: Colors.white), SizedBox(width: 12), Text('Feature coming soon!')]),
         backgroundColor: const Color(0xFF2575FC),
         behavior: SnackBarBehavior.floating,
       ),

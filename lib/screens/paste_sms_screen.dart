@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart'; // 🔹 Added for DateFormat
 import '../models/transaction_model.dart';
 import '../services/sms_parser_service.dart';
 import '../services/transaction_service.dart';
@@ -252,8 +253,10 @@ class _PasteSmsScreenState extends State<PasteSmsScreen> {
                         Icon(Icons.calendar_today_rounded, 
                             size: 14, color: Colors.grey[400]),
                         const SizedBox(width: 8),
+                        
+                        // 🔹 FIXED: Shows actual extracted date instead of "Today"
                         Text(
-                          'Today, ${TimeOfDay.now().format(context)}',
+                          DateFormat('EEEE, MMM d, yyyy').format(_preview!.date),
                           style: TextStyle(
                             color: Colors.grey[500],
                             fontSize: 13,

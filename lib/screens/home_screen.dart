@@ -14,7 +14,8 @@ import 'edit_transaction_screen.dart';
 import 'paste_sms_screen.dart';
 import 'notifications_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+// 🔹 Changed to StatefulWidget to handle "View All" state
+class HomeScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
   final double totalBalance;
   final double totalIncome;
@@ -34,9 +35,17 @@ class HomeScreen extends StatelessWidget {
     this.onProfileTap,
   });
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // 🔹 State for toggling "View All"
+  bool _showAllTransactions = false;
+
   // ---------------- DELETE LOGIC ----------------
   void _performDelete(BuildContext context, TransactionModel tx) {
-    onDelete(tx.id);
+    widget.onDelete(tx.id);
     HapticFeedback.mediumImpact();
   }
 
@@ -115,6 +124,11 @@ class HomeScreen extends StatelessWidget {
     final User? user = FirebaseAuth.instance.currentUser;
     final bgColor = Theme.of(context).scaffoldBackgroundColor;
     
+    // 🔹 LOGIC: Only show 5 unless expanded
+    final displayedTransactions = _showAllTransactions 
+        ? widget.transactions 
+        : widget.transactions.take(5).toList();
+
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
@@ -129,16 +143,20 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 10),
-                    _AnimatedBalanceCard(totalBalance: totalBalance, totalIncome: totalIncome, totalExpense: totalExpense),
+                    _AnimatedBalanceCard(totalBalance: widget.totalBalance, totalIncome: widget.totalIncome, totalExpense: widget.totalExpense),
                     const SizedBox(height: 24),
                     _ImportOptions(onCsvTap: () => _showCsvImportSheet(context), onSmsTap: () => _showSmsImportScreen(context)),
                     const SizedBox(height: 32),
+                    
+                    // 🔹 RECENT TRANSACTIONS HEADER
                     _buildRecentTransactionsHeader(context),
+                    
                     const SizedBox(height: 16),
-                    if (transactions.isEmpty)
+                    if (widget.transactions.isEmpty)
                       _buildEmptyState(context)
                     else
-                      ...transactions.asMap().entries.map((entry) {
+                      // 🔹 MAP THE LIMITED LIST
+                      ...displayedTransactions.asMap().entries.map((entry) {
                         final tx = entry.value;
                         final index = entry.key;
                         return _AnimatedTransactionTile(
@@ -152,6 +170,21 @@ class HomeScreen extends StatelessWidget {
                           },
                         );
                       }),
+                    
+                    // 🔹 "SHOW LESS" BUTTON AT BOTTOM IF EXPANDED
+                    if (_showAllTransactions && widget.transactions.length > 5) ...[
+                       const SizedBox(height: 16),
+                       Center(
+                         child: TextButton(
+                           onPressed: () {
+                             setState(() => _showAllTransactions = false);
+                             // Optional: Scroll back up
+                           },
+                           child: const Text("Show Less"),
+                         ),
+                       ),
+                    ],
+
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -163,7 +196,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // 🔹 HEADER WITH ROBUST NOTIFICATION COUNT
   Widget _buildHeader(BuildContext context, User? user) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
@@ -229,9 +261,7 @@ class HomeScreen extends StatelessWidget {
               ),
               Row(
                 children: [
-                  // 🔹 NOTIFICATION BUTTON
                   StreamBuilder<QuerySnapshot>(
-                    // 1. Fetch ALL notifications (don't filter by where clause yet)
                     stream: FirebaseFirestore.instance
                         .collection('users')
                         .doc(user?.uid)
@@ -241,10 +271,8 @@ class HomeScreen extends StatelessWidget {
                       int count = 0;
                       if (notifSnapshot.hasData && notifSnapshot.data != null) {
                         final docs = notifSnapshot.data!.docs;
-                        // 2. Filter manually: Count if 'isRead' is missing OR false
                         count = docs.where((doc) {
                           final data = doc.data() as Map<String, dynamic>;
-                          // If 'isRead' doesn't exist, treat it as unread (false)
                           final isRead = data['isRead'] ?? false; 
                           return isRead == false;
                         }).length;
@@ -307,12 +335,10 @@ class HomeScreen extends StatelessWidget {
                     }
                   ),
                   const SizedBox(width: 12),
-                  
-                  // Profile Picture
                   GestureDetector(
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      if (onProfileTap != null) onProfileTap!();
+                      if (widget.onProfileTap != null) widget.onProfileTap!();
                     },
                     child: Container(
                       width: 50, height: 50,
@@ -337,9 +363,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ... (Keep existing _buildRecentTransactionsHeader, _buildEmptyState, _ImportOptions, _ImportCard, _AnimatedBalanceCard, _BalanceBadge, _AnimatedTransactionTile, _CsvImportBottomSheet)
-  // PASTE THE REST OF THE HELPER CLASSES HERE
-  
   Widget _buildRecentTransactionsHeader(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
@@ -379,11 +402,22 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
-          TextButton(
-            onPressed: () {},
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFF2575FC)),
-            child: const Text('View All', style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
+          
+          // 🔹 TOGGLE VIEW ALL / SHOW LESS
+          if (widget.transactions.length > 5)
+            TextButton(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _showAllTransactions = !_showAllTransactions;
+                });
+              },
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFF2575FC)),
+              child: Text(
+                _showAllTransactions ? 'Show Less' : 'View All', 
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
         ],
       ),
     );

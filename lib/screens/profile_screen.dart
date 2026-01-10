@@ -9,7 +9,6 @@ import '../services/biometric_service.dart';
 import 'edit_profile_screen.dart';
 import '../../main.dart'; 
 import 'notifications_screen.dart'; 
-// ⬇️ IMPORT THE NEW SCREEN
 import 'budget_prediction_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -43,6 +42,106 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  void _showChangePasswordDialog(BuildContext context) {
+    final oldPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    bool isLoading = false;
+    String? errorText;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('Change Password', style: TextStyle(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (errorText != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        errorText!,
+                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                      ),
+                    ),
+                  TextField(
+                    controller: oldPassController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Current Password',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: newPassController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'New Password',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.key),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : () async {
+                    if (oldPassController.text.isEmpty || newPassController.text.isEmpty) {
+                      setDialogState(() => errorText = "Fields cannot be empty");
+                      return;
+                    }
+                    if (newPassController.text.length < 6) {
+                      setDialogState(() => errorText = "Password must be at least 6 chars");
+                      return;
+                    }
+
+                    setDialogState(() {
+                      isLoading = true;
+                      errorText = null;
+                    });
+
+                    try {
+                      await AuthService().changePassword(
+                        currentPassword: oldPassController.text,
+                        newPassword: newPassController.text,
+                      );
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        _showInfoSnackBar(context, "Password updated successfully!");
+                      }
+                    } catch (e) {
+                      setDialogState(() {
+                        isLoading = false;
+                        errorText = e.toString();
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2575FC),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: isLoading 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Update', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -158,6 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       _buildSectionHeader('Security', Icons.shield_rounded, textColor),
                       const SizedBox(height: 16),
                       
+                      // ⬇️ UPDATED CHANGE PASSWORD ITEM
                       _buildSettingItem(
                         icon: Icons.lock_rounded,
                         title: 'Change Password',
@@ -166,36 +266,15 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                         color2: const Color(0xFF37B679),
                         index: 3,
                         isDark: isDark,
-                        onTap: () => _showComingSoonSnackBar(context),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          _showChangePasswordDialog(context);
+                        },
                       ),
                       
                       _buildBiometricItem(index: 4, isDark: isDark),
                       
-                      const SizedBox(height: 32),
-                      _buildSectionHeader('About', Icons.info_rounded, textColor),
-                      const SizedBox(height: 16),
-                      
-                      _buildSettingItem(
-                        icon: Icons.help_rounded,
-                        title: 'Help & Support',
-                        subtitle: 'Get assistance',
-                        color1: const Color(0xFF4ECDC4),
-                        color2: const Color(0xFF44A08D),
-                        index: 5,
-                        isDark: isDark,
-                        onTap: () => _showComingSoonSnackBar(context),
-                      ),
-                      
-                      _buildSettingItem(
-                        icon: Icons.privacy_tip_rounded,
-                        title: 'Privacy Policy',
-                        subtitle: 'Terms & conditions',
-                        color1: const Color(0xFF78909C),
-                        color2: const Color(0xFF546E7A),
-                        index: 6,
-                        isDark: isDark,
-                        onTap: () => _showComingSoonSnackBar(context),
-                      ),
+                      // REMOVED "ABOUT" SECTION HERE (Help & Support, Privacy Policy)
                       
                       const SizedBox(height: 40),
                       _buildLogoutButton(isDark),
@@ -382,7 +461,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       children: [
         _buildIconContainer(icon, color),
         const SizedBox(width: 16),
-        // 🔹 ADDED EXPANDED HERE TO FIX OVERFLOW
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

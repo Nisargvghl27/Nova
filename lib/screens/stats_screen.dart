@@ -1,9 +1,11 @@
 import 'dart:math';
-import 'dart:ui' as ui;
+import 'dart:ui' as ui; // 🔹 Added for ui.Gradient
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
+import '../constants/categories.dart';
 
 class StatsScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -20,6 +22,7 @@ class _StatsScreenState extends State<StatsScreen>
   final List<String> _periods = ['7 Days', '30 Days', '90 Days', '1 Year'];
 
   late AnimationController _animationController;
+  int _touchedIndex = -1; // For Pie Chart interaction
 
   @override
   void initState() {
@@ -41,15 +44,17 @@ class _StatsScreenState extends State<StatsScreen>
     // 1. Filter for expenses only
     final allExpenses = widget.transactions.where((tx) => tx.type == 'debit').toList();
     
-    // 2. Generate Chart Data & Period Total based on selection
+    // 2. Generate Chart Data & Period Total
     final chartData = _generateChartData(allExpenses);
     
-    // 3. Top Categories (Based on the filtered period)
+    // 3. Top Categories
     Map<String, double> categoryTotals = _calculateCategoryTotals(chartData.filteredTransactions);
     List<MapEntry<String, double>> sortedCategories = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -72,7 +77,22 @@ class _StatsScreenState extends State<StatsScreen>
                     
                     const SizedBox(height: 32),
                     
-                    // 🔹 DYNAMIC TREND CHART
+                    // 🔹 PIE CHART (Distribution)
+                    if (sortedCategories.isNotEmpty) ...[
+                      Text(
+                        "Expense Distribution",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildPieChart(sortedCategories, chartData.totalPeriodSpending),
+                      const SizedBox(height: 32),
+                    ],
+
+                    // 🔹 LINE CHART (Trend)
                     _buildTrendChart(chartData),
                     
                     const SizedBox(height: 40),
@@ -87,8 +107,8 @@ class _StatsScreenState extends State<StatsScreen>
                         final categoryEntry = entry.value;
                         return _buildAnimatedCategoryItem(
                           index: index,
-                          icon: _getIconForCategory(categoryEntry.key),
-                          color: _getColorForCategory(categoryEntry.key),
+                          icon: CategoryStyle.getStyle(categoryEntry.key).icon,
+                          color: CategoryStyle.getStyle(categoryEntry.key).color,
                           category: categoryEntry.key,
                           amount: categoryEntry.value,
                           percent: chartData.totalPeriodSpending == 0 
@@ -116,62 +136,41 @@ class _StatsScreenState extends State<StatsScreen>
     List<TransactionModel> filteredTxs = [];
     String dateRange = "";
 
-    // Helper to strip time
     DateTime cleanDate(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
     if (_selectedPeriodIndex == 0) {
-      // -----------------------------------------
-      // 7 DAYS: Daily Spending (Last 7 Days)
-      // -----------------------------------------
+      // 7 DAYS
       int days = 7;
       dateRange = 'Last 7 Days';
-
-      // 1. Create buckets for each day
       Map<int, double> dailyTotals = {}; 
       for (int i = 0; i < days; i++) dailyTotals[i] = 0.0;
 
-      // 2. Filter & Aggregate
       for (var tx in allExpenses) {
         final txDate = cleanDate(tx.date);
         final diff = cleanDate(now).difference(txDate).inDays;
-
         if (diff >= 0 && diff < days) {
           filteredTxs.add(tx);
-          // Store in reverse order bucket (0 = today, 6 = 7 days ago)
           dailyTotals[diff] = (dailyTotals[diff] ?? 0) + tx.amount;
         }
       }
 
-      // 3. Build Lists (Oldest to Newest)
       for (int i = days - 1; i >= 0; i--) {
         values.add(dailyTotals[i] ?? 0.0);
-        
-        // Generate Label
         DateTime d = now.subtract(Duration(days: i));
-        if (i == 0) {
-          labels.add('Today');
-        } else {
-          labels.add(DateFormat('E').format(d)); // Mon, Tue, etc.
-        }
+        labels.add(i == 0 ? 'Today' : DateFormat('E').format(d));
       }
 
     } else if (_selectedPeriodIndex == 1) {
-      // -----------------------------------------
-      // 30 DAYS: Weekly Spending (Last 5 Weeks)
-      // -----------------------------------------
+      // 30 DAYS
       dateRange = 'Last 30 Days';
-      int weeks = 5; // Look back 5 weeks to cover 30 days
-      
+      int weeks = 5; 
       Map<int, double> weeklyTotals = {};
       for (int i = 0; i < weeks; i++) weeklyTotals[i] = 0.0;
 
       for (var tx in allExpenses) {
         final diffDays = cleanDate(now).difference(cleanDate(tx.date)).inDays;
-
-        // Roughly 35 days window to capture "5 weeks"
         if (diffDays >= 0 && diffDays < 35) {
-           if (diffDays < 30) filteredTxs.add(tx); // Strict filter for Total Amount
-
+           if (diffDays < 30) filteredTxs.add(tx); 
            int weekIndex = (diffDays / 7).floor();
            if (weekIndex < weeks) {
              weeklyTotals[weekIndex] = (weeklyTotals[weekIndex] ?? 0) + tx.amount;
@@ -179,72 +178,34 @@ class _StatsScreenState extends State<StatsScreen>
         }
       }
 
-      // Oldest week -> Newest week
       for (int i = weeks - 1; i >= 0; i--) {
         values.add(weeklyTotals[i] ?? 0.0);
-        // Labels: "Week 1", "Week 2"... (Chronological)
-        // i=4 is oldest (Week 1), i=0 is newest (Week 5)
         labels.add("W${weeks - i}");
       }
 
-    } else if (_selectedPeriodIndex == 2) {
-      // -----------------------------------------
-      // 90 DAYS: Monthly Spending (Last 3 Months)
-      // -----------------------------------------
-      dateRange = 'Last 3 Months';
-      int months = 3;
-
-      Map<int, double> monthlyTotals = {};
-      for (int i = 0; i < months; i++) monthlyTotals[i] = 0.0;
-
-      for (var tx in allExpenses) {
-        int diffMonths = (now.year - tx.date.year) * 12 + (now.month - tx.date.month);
-
-        if (diffMonths >= 0 && diffMonths < months) {
-          filteredTxs.add(tx);
-          monthlyTotals[diffMonths] = (monthlyTotals[diffMonths] ?? 0) + tx.amount;
-        }
-      }
-
-      // Oldest Month -> Current Month
-      for (int i = months - 1; i >= 0; i--) {
-        values.add(monthlyTotals[i] ?? 0.0);
-        
-        // Label: Month Name
-        DateTime d = DateTime(now.year, now.month - i, 1);
-        labels.add(DateFormat('MMM').format(d));
-      }
-
     } else {
-      // -----------------------------------------
-      // 1 YEAR: Monthly Spending (Last 12 Months)
-      // -----------------------------------------
-      dateRange = 'Last 1 Year';
-      int months = 12;
+      // 90 DAYS OR 1 YEAR
+      dateRange = _selectedPeriodIndex == 2 ? 'Last 3 Months' : 'Last 1 Year';
+      int months = _selectedPeriodIndex == 2 ? 3 : 12;
 
       Map<int, double> monthlyTotals = {};
       for (int i = 0; i < months; i++) monthlyTotals[i] = 0.0;
 
       for (var tx in allExpenses) {
         int diffMonths = (now.year - tx.date.year) * 12 + (now.month - tx.date.month);
-
         if (diffMonths >= 0 && diffMonths < months) {
           filteredTxs.add(tx);
           monthlyTotals[diffMonths] = (monthlyTotals[diffMonths] ?? 0) + tx.amount;
         }
       }
 
-      // Oldest -> Newest
       for (int i = months - 1; i >= 0; i--) {
         values.add(monthlyTotals[i] ?? 0.0);
-        
         DateTime d = DateTime(now.year, now.month - i, 1);
-        // Use single letter or short month for tight fit if needed, 'MMM' usually fits
         labels.add(DateFormat('MMM').format(d));
       }
     }
 
-    // Dynamic Max Y Scaling
     double maxY = values.isEmpty ? 100 : values.reduce(max);
     if (maxY == 0) maxY = 100;
     maxY = maxY * 1.2; 
@@ -261,87 +222,230 @@ class _StatsScreenState extends State<StatsScreen>
     );
   }
 
-  // ================= CHART WIDGET =================
+  // ================= NEW CHART WIDGETS =================
+
+  Widget _buildPieChart(List<MapEntry<String, double>> sortedCategories, double total) {
+    return SizedBox(
+      height: 220,
+      child: PieChart(
+        PieChartData(
+          pieTouchData: PieTouchData(
+            touchCallback: (FlTouchEvent event, pieTouchResponse) {
+              setState(() {
+                if (!event.isInterestedForInteractions ||
+                    pieTouchResponse == null ||
+                    pieTouchResponse.touchedSection == null) {
+                  _touchedIndex = -1;
+                  return;
+                }
+                _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+              });
+            },
+          ),
+          borderData: FlBorderData(show: false),
+          sectionsSpace: 2,
+          centerSpaceRadius: 40,
+          sections: _generatePieSections(sortedCategories, total),
+        ),
+      ),
+    );
+  }
+
+  List<PieChartSectionData> _generatePieSections(List<MapEntry<String, double>> categories, double total) {
+    // Show top 5, group others
+    List<MapEntry<String, double>> displayList = [];
+    if (categories.length > 5) {
+      displayList = categories.take(4).toList();
+      double otherTotal = categories.skip(4).fold(0, (sum, item) => sum + item.value);
+      displayList.add(MapEntry('Others', otherTotal));
+    } else {
+      displayList = categories;
+    }
+
+    return List.generate(displayList.length, (i) {
+      final isTouched = i == _touchedIndex;
+      final fontSize = isTouched ? 16.0 : 12.0;
+      final radius = isTouched ? 60.0 : 50.0;
+      final category = displayList[i].key;
+      final value = displayList[i].value;
+      final percentage = (value / total * 100);
+      final color = CategoryStyle.getStyle(category).color;
+
+      return PieChartSectionData(
+        color: color,
+        value: value,
+        title: '${percentage.toStringAsFixed(0)}%',
+        radius: radius,
+        titleStyle: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+          shadows: [Shadow(color: Colors.black45, blurRadius: 2)],
+        ),
+        badgeWidget: isTouched ? _buildBadge(category, color) : null,
+        badgePositionPercentageOffset: .98,
+      );
+    });
+  }
+
+  Widget _buildBadge(String category, Color color) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+      ),
+      child: Text(
+        category,
+        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 
   Widget _buildTrendChart(_ChartData data) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = Theme.of(context).cardColor;
     final textColor = isDark ? Colors.white : Colors.black87;
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 15,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2575FC).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.show_chart_rounded,
-                    size: 18,
-                    color: Color(0xFF2575FC),
+    List<FlSpot> spots = [];
+    for(int i=0; i<data.values.length; i++) {
+      spots.add(FlSpot(i.toDouble(), data.values[i]));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2575FC).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.show_chart_rounded, size: 18, color: Color(0xFF2575FC)),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _getChartTitle(),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          SizedBox(
+            height: 200, 
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: isDark ? Colors.white10 : Colors.grey[200],
+                    strokeWidth: 1,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  _getChartTitle(),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                    color: textColor,
+                titlesData: FlTitlesData(
+                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: 1,
+                      getTitlesWidget: (value, meta) {
+                        int index = value.toInt();
+                        if (index >= 0 && index < data.labels.length) {
+                           // Show label every few steps if too many
+                           if (data.labels.length > 7 && index % 2 != 0) return const SizedBox();
+                           return Padding(
+                             padding: const EdgeInsets.only(top: 8),
+                             child: Text(
+                               data.labels[index],
+                               style: TextStyle(
+                                 color: isDark ? Colors.white54 : Colors.grey[600],
+                                 fontSize: 10,
+                                 fontWeight: FontWeight.bold,
+                               ),
+                             ),
+                           );
+                        }
+                        return const SizedBox();
+                      },
+                    ),
                   ),
+                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            
-            // 🔹 THE CHART
-            SizedBox(
-              height: 200, 
-              width: double.infinity,
-              child: CustomPaint(
-                painter: _ChartWithAxisPainter(
-                  data: data.values,
-                  labels: data.labels,
-                  maxY: data.maxY,
-                  lineColor: const Color(0xFF2575FC),
-                  fillColors: [
-                    const Color(0xFF2575FC).withOpacity(0.3),
-                    const Color(0xFF2575FC).withOpacity(0.0),
-                  ],
-                  isDark: isDark,
+                borderData: FlBorderData(show: false),
+                minX: 0,
+                maxX: (data.values.length - 1).toDouble(),
+                minY: 0,
+                maxY: data.maxY,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+                    ),
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF2575FC).withOpacity(0.3),
+                          const Color(0xFF2575FC).withOpacity(0.0),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ],
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    // 🔹 FIXED: Use getTooltipColor instead of tooltipBgColor
+                    getTooltipColor: (touchedSpot) => isDark ? Colors.grey[800]! : Colors.white,
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((LineBarSpot touchedSpot) {
+                        return LineTooltipItem(
+                          '₹${touchedSpot.y.toStringAsFixed(0)}',
+                          TextStyle(
+                            color: const Color(0xFF2575FC),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -648,35 +752,6 @@ class _StatsScreenState extends State<StatsScreen>
     for (var tx in txs) totals[tx.category] = (totals[tx.category] ?? 0) + tx.amount;
     return totals;
   }
-
-  IconData _getIconForCategory(String category) {
-     switch (category) {
-      case 'Food & Dining': return Icons.restaurant_rounded;
-      case 'Groceries': return Icons.local_grocery_store_rounded;
-      case 'Rent': return Icons.home_rounded;
-      case 'Transport': return Icons.directions_bus_rounded;
-      case 'Shopping': return Icons.shopping_bag_rounded;
-      case 'Entertainment': return Icons.movie_rounded;
-      case 'Healthcare': return Icons.health_and_safety_rounded;
-      case 'Bills': return Icons.receipt_long_rounded;
-      case 'Fuel': return Icons.local_gas_station_rounded;
-      default: return Icons.category_rounded;
-    }
-  }
-
-  Color _getColorForCategory(String category) {
-    switch (category) {
-      case 'Food & Dining': return const Color(0xFFFF6B6B);
-      case 'Groceries': return const Color(0xFF4ECDC4);
-      case 'Transport': return const Color(0xFF5D9CEC);
-      case 'Shopping': return const Color(0xFFEC87C0);
-      case 'Entertainment': return const Color(0xFF967ADC);
-      case 'Healthcare': return const Color(0xFFDA4453);
-      case 'Bills': return const Color(0xFF95E1D3);
-      case 'Fuel': return const Color(0xFFED5565);
-      default: return const Color(0xFF78909C);
-    }
-  }
 }
 
 // ================= DATA CLASS =================
@@ -696,150 +771,4 @@ class _ChartData {
     required this.totalPeriodSpending,
     required this.filteredTransactions,
   });
-}
-
-// ================= CHART PAINTER =================
-class _ChartWithAxisPainter extends CustomPainter {
-  final List<double> data;
-  final List<String> labels;
-  final double maxY;
-  final Color lineColor;
-  final List<Color> fillColors;
-  final bool isDark;
-
-  _ChartWithAxisPainter({
-    required this.data,
-    required this.labels,
-    required this.maxY,
-    required this.lineColor,
-    required this.fillColors,
-    required this.isDark,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const double bottomPadding = 30.0; // Increased to fit labels
-    const double leftPadding = 40.0;
-    final double chartW = size.width - leftPadding;
-    final double chartH = size.height - bottomPadding;
-
-    // 🔹 DRAW Y-AXIS LABELS
-    _drawText(canvas, '0', Offset(0, chartH - 10), isDark, alignRight: false);
-    _drawText(canvas, '${(maxY/2).toInt()}', Offset(0, chartH/2 - 10), isDark, alignRight: false);
-    _drawText(canvas, '${maxY.toInt()}', Offset(0, -10), isDark, alignRight: false);
-    
-    // 🔹 DRAW BASELINE
-    final gridPaint = Paint()
-      ..color = isDark ? Colors.white12 : Colors.grey[300]!
-      ..strokeWidth = 1;
-    canvas.drawLine(
-      Offset(leftPadding, chartH), 
-      Offset(size.width, chartH), 
-      gridPaint
-    );
-
-    if (data.isEmpty || data.every((e) => e == 0)) return;
-
-    // 🔹 PREPARE POINTS
-    final path = Path();
-    final double step = chartW / (data.length > 1 ? data.length - 1 : 1);
-    
-    // Scale data points
-    double firstY = chartH - (data[0] / maxY * chartH);
-    path.moveTo(leftPadding, firstY);
-
-    List<Offset> points = [];
-    points.add(Offset(leftPadding, firstY));
-
-    // 🔹 CALCULATE POINTS
-    for (int i = 1; i < data.length; i++) {
-      double x = leftPadding + (i * step);
-      double y = chartH - (data[i] / maxY * chartH);
-      points.add(Offset(x, y));
-    }
-
-    // 🔹 DRAW PATH (CURVED)
-    if (data.length == 1) {
-      path.lineTo(size.width, firstY);
-    } else {
-      // Cubic Bezier Smoothing
-      for (int i = 0; i < points.length - 1; i++) {
-        final p1 = points[i];
-        final p2 = points[i + 1];
-        final cp1 = Offset((p1.dx + p2.dx) / 2, p1.dy);
-        final cp2 = Offset((p1.dx + p2.dx) / 2, p2.dy);
-        path.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, p2.dx, p2.dy);
-      }
-    }
-
-    // Fill Gradient
-    final fillPath = Path.from(path);
-    fillPath.lineTo(size.width, chartH);
-    fillPath.lineTo(leftPadding, chartH);
-    fillPath.close();
-
-    final gradient = ui.Gradient.linear(
-      Offset(0, 0),
-      Offset(0, chartH),
-      fillColors,
-    );
-
-    canvas.drawPath(fillPath, Paint()..shader = gradient..style = PaintingStyle.fill);
-
-    // Line Stroke
-    final strokePaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawPath(path, strokePaint);
-
-    // 🔹 DRAW X-AXIS LABELS (Aligned with points)
-    for (int i = 0; i < points.length; i++) {
-      if (i < labels.length) {
-        final point = points[i];
-        // Center text on the X coordinate
-        _drawCenteredText(canvas, labels[i], Offset(point.dx, chartH + 10), isDark);
-      }
-    }
-  }
-
-  void _drawText(Canvas canvas, String text, Offset pos, bool isDark, {bool alignRight = false}) {
-    final textSpan = TextSpan(
-      text: text,
-      style: TextStyle(
-        color: isDark ? Colors.white54 : Colors.grey[600],
-        fontSize: 10, 
-        fontWeight: FontWeight.w600,
-      ),
-    );
-    final tp = TextPainter(
-      text: textSpan,
-      textDirection: ui.TextDirection.ltr,
-    );
-    tp.layout();
-    tp.paint(canvas, pos);
-  }
-
-  void _drawCenteredText(Canvas canvas, String text, Offset centerPos, bool isDark) {
-    final textSpan = TextSpan(
-      text: text,
-      style: TextStyle(
-        color: isDark ? Colors.white54 : Colors.grey[600],
-        fontSize: 10, 
-        fontWeight: FontWeight.w600,
-      ),
-    );
-    final tp = TextPainter(
-      text: textSpan,
-      textDirection: ui.TextDirection.ltr,
-    );
-    tp.layout();
-    // Offset by half width to center
-    tp.paint(canvas, Offset(centerPos.dx - (tp.width / 2), centerPos.dy));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

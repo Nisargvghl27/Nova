@@ -99,6 +99,39 @@ class AuthService {
     }
   }
 
+  // ---------------- CHANGE PASSWORD (NEW) ----------------
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) throw Exception("No user logged in");
+      if (user.email == null) throw Exception("User email not found");
+
+      // 1. Re-authenticate (Required for security operations)
+      final cred = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(cred);
+
+      // 2. Update Password
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') {
+        throw Exception('Current password is incorrect.');
+      } else if (e.code == 'weak-password') {
+        throw Exception('New password is too weak.');
+      } else if (e.code == 'requires-recent-login') {
+        throw Exception('Please log out and log in again to change password.');
+      }
+      throw Exception(e.message ?? 'Password update failed');
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
   // ---------------- SAVE IMAGE AS BASE64 ----------------
   Future<void> saveProfileImageAsBase64(File imageFile) async {
     try {
@@ -118,7 +151,7 @@ class AuthService {
     }
   }
 
-  // ---------------- DELETE PROFILE IMAGE (NEW) ----------------
+  // ---------------- DELETE PROFILE IMAGE ----------------
   Future<void> deleteProfileImage() async {
     try {
       final user = _auth.currentUser;

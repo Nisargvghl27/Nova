@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../services/transaction_service.dart';
+import 'notifications_screen.dart'; // 🔹 Added Import
 
 class WalletScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -250,16 +251,25 @@ class _WalletScreenState extends State<WalletScreen>
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey[800] : Colors.grey[100],
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.notifications_none_rounded, 
-              size: 22,
-              color: isDark ? Colors.white70 : Colors.black87,
+          // 🔹 UPDATED: Added Gesture Detector to Open Notification Screen
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.notifications_none_rounded, 
+                size: 22,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
             ),
           ),
         ],

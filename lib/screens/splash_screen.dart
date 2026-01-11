@@ -7,82 +7,178 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
-  bool _isVisible = false;
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Start fade-in animation shortly after boot
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() {
-          _isVisible = true;
-        });
-      }
-    });
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+
+    // Fade in effect
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
+      ),
+    );
+
+    // Smooth "pop" scaling effect
+    _scaleAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
+      ),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Check if system is in dark mode or light mode
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Dynamic colors based on theme
+    final Color bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FD);
+    final Color accentColor = const Color(0xFF2575FC);
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
+    final Color subTextColor = isDark ? Colors.white70 : Colors.black54;
+
     return Scaffold(
-      // Ensure splash background is compatible with the theme, though we use a gradient covering it.
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      backgroundColor: bgColor,
+      body: Stack(
+        children: [
+          // 1. Subtle Background Accents (Blurred Circles)
+          Positioned(
+            top: -50,
+            right: -50,
+            child: _buildBackgroundCircle(accentColor.withOpacity(isDark ? 0.15 : 0.08), 250),
           ),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: AnimatedOpacity(
-                opacity: _isVisible ? 1.0 : 0.0,
-                duration: const Duration(seconds: 2),
-                curve: Curves.easeOut,
+          Positioned(
+            bottom: -80,
+            left: -80,
+            child: _buildBackgroundCircle(const Color(0xFF6A11CB).withOpacity(isDark ? 0.1 : 0.05), 300),
+          ),
+
+          // 2. Main Content
+          Center(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.account_balance_wallet_rounded,
-                      size: 100,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Nova',
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    // Brand Identity Card
+                    Container(
+                      padding: const EdgeInsets.all(25),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.03) : Colors.white,
+                        borderRadius: BorderRadius.circular(35),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accentColor.withOpacity(isDark ? 0.2 : 0.1),
+                            blurRadius: 40,
+                            offset: const Offset(0, 15),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                        ),
+                      ),
+                      child: Image.asset(
+                        'assets/images/app_icon.png',
+                        height: 90,
+                        width: 90,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.auto_graph_rounded,
+                          size: 70,
+                          color: accentColor,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Smart way to manage finance',
+                    const SizedBox(height: 35),
+                    
+                    // App Name
+                    Text(
+                      'NOVA',
                       style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white70,
+                        fontSize: 40,
+                        fontWeight: FontWeight.w900,
+                        color: textColor,
+                        letterSpacing: 6,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Modern Tagline
+                    Text(
+                      'FINANCE REIMAGINED',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: subTextColor,
+                        letterSpacing: 3,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 50),
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 3,
-              ),
+          ),
+
+          // 3. Footer Loader & Branding
+          Positioned(
+            bottom: 70,
+            left: 0,
+            right: 0,
+            child: Column(
+              children: [
+                SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Text(
+                  'v1.0.0',
+                  style: TextStyle(
+                    color: subTextColor.withOpacity(0.4),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackgroundCircle(Color color, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
       ),
     );
   }

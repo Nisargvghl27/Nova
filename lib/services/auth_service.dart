@@ -26,7 +26,8 @@ class AuthService {
       if (user != null) {
         await _createUserDocument(user);
         await user.sendEmailVerification();
-        await _auth.signOut();
+        // 🔹 REMOVED: await _auth.signOut(); 
+        // We keep the user logged in so they can complete their profile immediately.
       }
       return user;
     } on FirebaseAuthException catch (e) {

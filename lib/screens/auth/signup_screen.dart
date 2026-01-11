@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/auth_service.dart';
+import '../edit_profile_screen.dart'; 
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -29,6 +30,7 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _loading = true);
 
     try {
+      // 1. Create User & Send Email
       await AuthService().signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -36,15 +38,28 @@ class _SignupScreenState extends State<SignupScreen> {
 
       if (!mounted) return;
 
+      // 🔹 2. Show Link Sent Confirmation BEFORE Navigation
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            "Verification email sent. Please verify and login.",
+            "Verification link sent. Please complete profile.",
           ),
+          backgroundColor: Color(0xFF2575FC),
+          duration: Duration(seconds: 3),
         ),
       );
 
-      Navigator.pop(context);
+      // 🔹 3. Navigate to Profile Setup
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const EditProfileScreen(
+            currentName: '', 
+            isSetupMode: true, // Force setup mode
+          ),
+        ),
+      );
+      
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString())),

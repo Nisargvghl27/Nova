@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-
 import '../models/transaction_model.dart';
 import 'category_service.dart';
 
@@ -15,7 +14,6 @@ class SmsParserService {
       final tx = parse(line.trim());
       if (tx != null) transactions.add(tx);
     }
-
     return transactions;
   }
 
@@ -24,221 +22,216 @@ class SmsParserService {
     String text = smsText.toLowerCase().trim();
 
     // ❌ Ignore OTP / spam / irrelevant messages
-    if (text.contains('otp') ||
-        text.contains('verification') ||
-        text.contains('code') ||
-        text.contains('password') ||
-        text.contains('requested') ||
-        text.contains('fail') ||
+    if (text.contains('otp') || 
+        text.contains('verification') || 
+        text.contains('code') || 
+        (text.contains('fail') && !text.contains('failure')) || 
         text.contains('declined')) {
       return null;
     }
 
-    // 💰 1. Amount Detection
-    // Matches: Rs. 500, INR 500, Rs 500.00, INR 5,000, ₹500
-    final amountRegex = RegExp(
-      r'(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)',
-      caseSensitive: false,
-    );
+    // ==========================================
+    // 💰 1. SMART AMOUNT DETECTION
+    // ==========================================
+    // Priority A: Standard Currency Symbols (Rs. 500, INR 500, ₹500)
+    RegExp amountRegex = RegExp(r'(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)', caseSensitive: false);
+    var amountMatch = amountRegex.firstMatch(text);
 
-    final amountMatch = amountRegex.firstMatch(text);
+    // Priority B: Contextual Amounts (debited by 40, amt 500) - No symbol needed
+    if (amountMatch == null) {
+      final contextAmountRegex = RegExp(
+        r'(?:debited|credited|sent|paid|withdraw|spent|amt|amount)\s+(?:by|of)?\s*?([\d,]+(?:\.\d{1,2})?)', 
+        caseSensitive: false
+      );
+      amountMatch = contextAmountRegex.firstMatch(text);
+    }
+
     if (amountMatch == null) return null;
 
     String cleanAmount = amountMatch.group(1)!.replaceAll(',', '');
     final amount = double.tryParse(cleanAmount);
     if (amount == null) return null;
 
-    // 🔄 2. Debit / Credit Detection
-    final debitKeywords = [
-      'debit', 'spent', 'paid', 'sent', 'purchas', 'withdraw', 
-      'deduct', 'payment', 'transfer to'
-    ];
-    final creditKeywords = [
-      'credit', 'received', 'refund', 'cashback', 'deposited', 
-      'added', 'salary', 'transfer from'
-    ];
+    // ==========================================
+    // 🔄 2. DEBIT / CREDIT DETECTION
+    // ==========================================
+    final debitKeywords = ['debit', 'spent', 'paid', 'sent', 'purchas', 'withdraw', 'deduct', 'trf to', 'transfer to'];
+    final creditKeywords = ['credit', 'received', 'refund', 'cashback', 'deposited', 'added', 'salary', 'transfer from'];
 
-    bool isDebit = debitKeywords.any((w) => text.contains(w));
     bool isCredit = creditKeywords.any((w) => text.contains(w));
+    bool isDebit = debitKeywords.any((w) => text.contains(w));
 
+    // Fallback: "Paid to" usually means Debit
     if (!isDebit && !isCredit) {
       if (text.contains(' to ')) isDebit = true;
     }
     
+    // Default to debit if unsure (safer for expense trackers)
     final bool finalIsDebit = isCredit ? false : true;
 
-    // 🏪 3. Merchant / Description Detection
+    // ==========================================
+    // 🏪 3. ADVANCED MERCHANT EXTRACTION
+    // ==========================================
     String merchant = '';
-    
-    // Remove common identifiers that mess up extraction
-    String cleanText = text
-        .replaceAll(RegExp(r'a/c\s*x+\d+'), '') 
-        .replaceAll(RegExp(r'ref:?\s*\w+'), '') 
-        .replaceAll(RegExp(r'txn:?\s*\w+'), '') 
-        .replaceAll(RegExp(r'info:?\s*.*'), '') 
-        .replaceAll(RegExp(r'\s+'), ' ');
 
+    // 🛑 Step 3.1: Clean up the text first
+    // Removes "Refno 1234", "Call 1800...", "If not u?", "Dear UPI user"
+    String cleanText = text
+        .replaceAll(RegExp(r'ref\s*(?:no|num)?[:\s-]*[a-z0-9]+'), ' ') // Ref No
+        .replaceAll(RegExp(r'upi\s*ref\s*[:\s-]*[a-z0-9]+'), ' ') // UPI Ref
+        .replaceAll(RegExp(r'call\s*[:\s-]*\d+'), ' ') // Call 1800...
+        .replaceAll(RegExp(r'helpline\s*[:\s-]*\d+'), ' ') 
+        .replaceAll(RegExp(r'if\s+not\s+u\?'), ' ') // If not u?
+        .replaceAll(RegExp(r'dear\s+upi\s+user'), ' ') 
+        .replaceAll(RegExp(r'a/c\s*[x0-9]+'), ' ') // A/C X1234
+        .replaceAll(RegExp(r'info:?\s*.*'), ' ') 
+        .replaceAll(RegExp(r'thru\s+[a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'via\s+[a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' '); // Merge spaces
+
+    // 🔍 Step 3.2: Regex Patterns for Merchant Name
     final merchantPatterns = [
-      RegExp(r'paid to\s+([a-zA-Z0-9 &._-]+?)(?:\s+(?:on|via|using|from)|$)'),
-      RegExp(r'spent at\s+([a-zA-Z0-9 &._-]+?)(?:\s+(?:on|via|using|from)|$)'),
-      RegExp(r'sent to\s+([a-zA-Z0-9 &._-]+?)(?:\s+(?:on|via|using|from)|$)'),
-      RegExp(r'transfer to\s+([a-zA-Z0-9 &._-]+?)(?:\s+(?:on|via|using|from)|$)'),
-      RegExp(r'debited\s+.*?\s+to\s+([a-zA-Z0-9 &._-]+?)(?:\s+(?:on|via|using|from)|$)'),
-      RegExp(r'credited\s+.*?\s+from\s+([a-zA-Z0-9 &._-]+?)(?:\s+(?:on|via|using|from)|$)'),
-      RegExp(r'\bat\s+([a-zA-Z0-9 &._-]+?)(?:\s+(?:on|via|using|from)|$)'),
+      // "trf to Ravi Medical" / "transfer to Ravi Medical"
+      RegExp(r'(?:trf|transfer|sent|paid|pay)\s+to\s+([a-zA-Z0-9 .&_-]+)'),
+      
+      // "spent at Swiggy" / "purchase at Zomato"
+      RegExp(r'(?:spent|purchase|transxn)\s+(?:at|on)\s+([a-zA-Z0-9 .&_-]+)'),
+      
+      // "debited by 40 for Swiggy"
+      RegExp(r'(?:for|info)\s+([a-zA-Z0-9 .&_-]+)'),
+      
+      // "Swiggy debited..."
+      RegExp(r'^([a-zA-Z0-9 .&_-]+?)\s+(?:debited|credited)'),
     ];
 
     for (final pattern in merchantPatterns) {
       final match = pattern.firstMatch(cleanText);
       if (match != null) {
-        merchant = match.group(1)!.trim();
-        if (merchant.length > 2) break;
+        // Stop capturing if we hit these words
+        String rawName = match.group(1)!;
+        final stopWords = [' and ', ' on ', ' ref', ' date', ' bal', ' vpa', ' from ', ' using '];
+        int endIndex = rawName.length;
+        
+        for (var word in stopWords) {
+          final idx = rawName.indexOf(word);
+          if (idx != -1 && idx < endIndex) endIndex = idx;
+        }
+        
+        merchant = rawName.substring(0, endIndex).trim();
+        if (merchant.length > 2 && !RegExp(r'^\d+$').hasMatch(merchant)) break;
       }
     }
 
-    if (merchant.isEmpty) {
-        if (text.contains('recharge')) merchant = 'Mobile Recharge';
-        else if (text.contains('bill')) merchant = 'Bill Payment';
-        else merchant = 'Bank Transaction';
+    // 🚨 Step 3.3: Smart Fallbacks (Keywords)
+    if (merchant.isEmpty || merchant.length < 3) {
+      if (text.contains('swiggy')) merchant = 'Swiggy';
+      else if (text.contains('zomato')) merchant = 'Zomato';
+      else if (text.contains('uber')) merchant = 'Uber';
+      else if (text.contains('ola')) merchant = 'Ola';
+      else if (text.contains('blinkit')) merchant = 'Blinkit';
+      else if (text.contains('zepto')) merchant = 'Zepto';
+      else if (text.contains('jio')) merchant = 'Jio';
+      else if (text.contains('airtel')) merchant = 'Airtel';
+      else if (text.contains('vi ')) merchant = 'Vi';
+      else if (text.contains('netflix')) merchant = 'Netflix';
+      else if (text.contains('amazon')) merchant = 'Amazon';
+      else if (text.contains('flipkart')) merchant = 'Flipkart';
+      else if (text.contains('recharge')) merchant = 'Mobile Recharge';
+      else if (text.contains('bill')) merchant = 'Bill Payment';
+      else if (text.contains('upi')) merchant = 'UPI Transfer';
+      else merchant = 'Unknown Transaction';
     }
 
-    merchant = _cleanMerchantName(merchant);
+    merchant = _capitalize(merchant);
 
-    // 📅 4. Date Detection (FIXED)
-    DateTime date = _parseDate(text);
-
-    // 💳 5. Payment Source
-    String paymentType = 'Unknown';
-    if (text.contains('upi')) paymentType = 'UPI';
-    else if (text.contains('card') || text.contains('debit card')) paymentType = 'Card';
-    else if (text.contains('atm')) paymentType = 'ATM';
-    else if (text.contains('netbanking') || text.contains('net banking')) paymentType = 'NetBanking';
-
-    // 🧠 6. Category Detection
+    // ==========================================
+    // 🧠 4. CATEGORY DETECTION
+    // ==========================================
     final category = CategoryService.detectCategory(
       merchant: merchant,
-      smsText: smsText,
+      smsText: text,
       isDebit: finalIsDebit,
     );
 
+    // ==========================================
+    // 📅 5. ADVANCED DATE PARSING
+    // ==========================================
+    DateTime date = _parseDate(text);
+
     return TransactionModel(
-      // Unique ID: Timestamp + Amount Hash
-      id: DateTime.now().millisecondsSinceEpoch.toString() + (amount * 100).toStringAsFixed(0),
-      title: _capitalize(merchant),
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: merchant,
       amount: amount,
       date: date,
       category: category,
       type: finalIsDebit ? 'debit' : 'credit',
       source: 'sms',
-      note: paymentType,
+      note: 'Auto-detected',
       createdAt: Timestamp.now(),
     );
   }
 
-  // 🛠️ Robust Date Parser
+  /// 📅 Parses multiple date formats including "08Jan26"
   DateTime _parseDate(String text) {
-    // 1. Numeric Pattern (DD-MM-YYYY or DD/MM/YYYY)
-    // Matches: 06-12-2025, 6/12/25, 06.12.2025
-    final numericRegex = RegExp(r'\b(\d{1,2})[\s/\-.,]+(\d{1,2})[\s/\-.,]+(\d{2,4})\b');
-    final numMatch = numericRegex.firstMatch(text);
-    if (numMatch != null) {
-      String d = numMatch.group(1)!;
-      String m = numMatch.group(2)!;
-      String y = numMatch.group(3)!;
-      return _buildDate(d, m, y);
-    }
+    try {
+      // Pattern 1: Compact Date "08Jan26" or "08Jan2026"
+      final compactRegex = RegExp(r'\b(\d{2})([a-zA-Z]{3})(\d{2,4})\b');
+      final compactMatch = compactRegex.firstMatch(text);
+      if (compactMatch != null) {
+        String d = compactMatch.group(1)!;
+        String m = compactMatch.group(2)!;
+        String y = compactMatch.group(3)!;
+        return _buildDate(d, m, y);
+      }
 
-    // 2. Alphanumeric Pattern (DD-Mon-YYYY)
-    // Matches: 12 Jan 2025, 12-Jan-2025, 12th Jan 25
-    final alphaRegex = RegExp(r'\b(\d{1,2})(?:st|nd|rd|th)?[\s/\-.,]+([a-z]{3,})[\s/\-.,]+(\d{2,4})\b');
-    final alphaMatch = alphaRegex.firstMatch(text);
-    if (alphaMatch != null) {
-      String d = alphaMatch.group(1)!;
-      String m = alphaMatch.group(2)!;
-      String y = alphaMatch.group(3)!;
-      return _buildDate(d, m, y);
-    }
+      // Pattern 2: Standard Date "08-01-26" or "08/01/2026"
+      final numericRegex = RegExp(r'\b(\d{1,2})[\s/\-.,]+(\d{1,2})[\s/\-.,]+(\d{2,4})\b');
+      final numMatch = numericRegex.firstMatch(text);
+      if (numMatch != null) {
+        return _buildDate(numMatch.group(1)!, numMatch.group(2)!, numMatch.group(3)!);
+      }
 
-    // 3. Reverse Alphanumeric Pattern (Mon DD YYYY)
-    // Matches: Jan 12 2025, Jan 12th 2025
-    final revAlphaRegex = RegExp(r'\b([a-z]{3,})[\s/\-.,]+(\d{1,2})(?:st|nd|rd|th)?[\s/\-.,]+(\d{2,4})\b');
-    final revAlphaMatch = revAlphaRegex.firstMatch(text);
-    if (revAlphaMatch != null) {
-      String m = revAlphaMatch.group(1)!;
-      String d = revAlphaMatch.group(2)!;
-      String y = revAlphaMatch.group(3)!;
-      return _buildDate(d, m, y);
+      // Pattern 3: Text Date "08 Jan 26"
+      final textRegex = RegExp(r'\b(\d{1,2})[\s/\-.,]+([a-zA-Z]{3,})[\s/\-.,]+(\d{2,4})\b');
+      final textMatch = textRegex.firstMatch(text);
+      if (textMatch != null) {
+        return _buildDate(textMatch.group(1)!, textMatch.group(2)!, textMatch.group(3)!);
+      }
+    } catch (e) {
+      // Ignore errors, return current date
     }
-
-    // 4. ISO Pattern (YYYY-MM-DD)
-    // Matches: 2025-12-06
-    final isoRegex = RegExp(r'\b(\d{4})[\s/\-.,]+(\d{1,2})[\s/\-.,]+(\d{1,2})\b');
-    final isoMatch = isoRegex.firstMatch(text);
-    if (isoMatch != null) {
-      String y = isoMatch.group(1)!;
-      String m = isoMatch.group(2)!;
-      String d = isoMatch.group(3)!;
-      return _buildDate(d, m, y);
-    }
-
-    // Fallback: Return today
     return DateTime.now();
   }
 
   DateTime _buildDate(String d, String m, String y) {
     try {
-      // 1. Fix Year (e.g., "23" -> "2023")
+      // Fix 2-digit years (26 -> 2026)
       if (y.length == 2) y = '20$y';
 
-      // 2. Convert Month Name to Number (e.g., "jan" -> "01")
-      if (RegExp(r'[a-z]').hasMatch(m)) {
-        m = _monthNameToNumber(m);
+      // Parse Month
+      int month = 1;
+      if (RegExp(r'^\d+$').hasMatch(m)) {
+        month = int.parse(m);
       } else {
-        // Numeric Month Logic
-        int monthInt = int.tryParse(m) ?? 0;
-        int dayInt = int.tryParse(d) ?? 0;
-
-        // Auto-fix US Date Format (MM-DD-YYYY) if Month > 12
-        // Example: 06-15-2025 (15th month is impossible, so it must be 15th Day)
-        if (monthInt > 12 && dayInt <= 12) {
-          String temp = d;
-          d = m;
-          m = temp;
-        }
+        month = _monthNameToNumber(m);
       }
 
-      // 3. Pad Day and Month (e.g., "1" -> "01")
-      if (d.length == 1) d = '0$d';
-      if (m.length == 1) m = '0$m';
-
-      // 4. Parse Strict ISO Format
-      return DateTime.parse('$y-$m-$d');
-    } catch (e) {
+      return DateTime(int.parse(y), month, int.parse(d));
+    } catch (_) {
       return DateTime.now();
     }
   }
 
-  String _cleanMerchantName(String name) {
-     String n = name.toLowerCase();
-     n = n.replaceAll(RegExp(r'\b(via|on|using|through|from)\b.*'), '');
-     n = n.replaceAll(RegExp(r'\b(imps|neft|rtgs|upi|mmt|inb)\b'), '');
-     return _capitalize(n.trim());
-  }
-
-  String _monthNameToNumber(String month) {
+  int _monthNameToNumber(String m) {
     const months = {
-      'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
-      'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+      'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+      'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
     };
-    final shortName = month.length >= 3 ? month.substring(0, 3) : month;
-    return months[shortName] ?? '01';
+    return months[m.toLowerCase().substring(0, 3)] ?? 1;
   }
 
   String _capitalize(String text) {
     if (text.isEmpty) return text;
-    return text.split(' ').map((word) {
-      if (word.isEmpty) return '';
-      return word[0].toUpperCase() + word.substring(1).toLowerCase();
-    }).join(' ');
+    return text.split(' ').map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}' : '').join(' ');
   }
 }

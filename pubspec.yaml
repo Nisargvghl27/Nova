@@ -8,6 +8,7 @@ environment:
   sdk: ^3.10.3
 
 dependencies:
+  http: ^1.1.0
   local_auth: ^2.1.6
   shared_preferences: ^2.2.2
   flutter:

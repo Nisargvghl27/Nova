@@ -204,7 +204,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    // 🔹 1. VALIDATE ALL FIELDS (Including Name & Phone)
+    // 隼 1. VALIDATE ALL FIELDS (Including Name & Phone)
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all compulsory fields')),
@@ -236,19 +236,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!mounted) return;
 
       if (widget.isSetupMode) {
-        await authService.logout();
+        // 隼 UPDATED LOGIC FOR NEW USERS
+        final user = FirebaseAuth.instance.currentUser;
         
-        if (!mounted) return;
-        Navigator.pop(context); // Back to Login
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile Completed! Please verify email & login.'),
-            backgroundColor: Color(0xFF2575FC),
-            duration: Duration(seconds: 5),
-          ),
-        );
+        if (user != null && user.emailVerified) {
+          // GOOGLE / VERIFIED USER: Just finish. AuthWrapper will handle transition.
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile Completed! Welcome to Nova.'),
+              backgroundColor: Color(0xFF2575FC),
+              duration: Duration(seconds: 3),
+            ),
+          );
+          // We don't pop or logout here. The Firestore stream in main.dart will 
+          // detect the new data and switch to MainScreen automatically.
+        } else {
+          // EMAIL / UNVERIFIED USER: Logout and go back to login.
+          await authService.logout();
+          if (!mounted) return;
+          Navigator.pop(context); // Back to Login
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile Completed! Please verify email & login.'),
+              backgroundColor: Color(0xFF2575FC),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
       } else {
+        // NORMAL EDIT MODE
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Row(children: [Icon(Icons.check_circle_rounded, color: Colors.white), SizedBox(width: 8), Text('Profile updated successfully')]),
@@ -338,7 +355,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Text('Personal Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF6A11CB))),
                   const SizedBox(height: 24),
 
-                  // 🔹 NAME: COMPULSORY
+                  // 隼 NAME: COMPULSORY
                   _buildLabel('Full Name *', isDark), const SizedBox(height: 8),
                   _buildTextField(
                     controller: _nameController, 
@@ -350,7 +367,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // 🔹 PHONE: COMPULSORY
+                  // 隼 PHONE: COMPULSORY
                   _buildLabel('Phone Number *', isDark), const SizedBox(height: 8),
                   _buildTextField(
                     controller: _phoneController, 

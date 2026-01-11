@@ -11,7 +11,7 @@ class TransactionModel {
   final String note;         // optional
   final Timestamp createdAt;
   final String fingerprint;
-  final bool isDeleted;      // 🔹 NEW: Soft delete flag
+  final bool isDeleted; 
 
   TransactionModel({
     required this.id,
@@ -23,7 +23,7 @@ class TransactionModel {
     required this.source,
     required this.note,
     required this.createdAt,
-    this.isDeleted = false,  // 🔹 Default to false
+    this.isDeleted = false,
     String? fingerprint,
   }) : fingerprint = fingerprint ?? _generateFingerprint(
           date: date,
@@ -31,7 +31,6 @@ class TransactionModel {
           title: title,
         );
 
-  /// 🔹 Generate fingerprint
   static String _generateFingerprint({
     required DateTime date,
     required double amount,
@@ -42,7 +41,6 @@ class TransactionModel {
         '_${title.toLowerCase().trim()}';
   }
 
-  /// 🔹 Convert Firestore → Model
   factory TransactionModel.fromMap(
     String id,
     Map<String, dynamic> data,
@@ -58,11 +56,10 @@ class TransactionModel {
       note: data['note'] ?? '',
       createdAt: data['createdAt'] ?? Timestamp.now(),
       fingerprint: data['fingerprint'],
-      isDeleted: data['isDeleted'] ?? false, // 🔹 Read isDeleted
+      isDeleted: data['isDeleted'] ?? false,
     );
   }
 
-  /// 🔹 Convert Model → Firestore
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -74,11 +71,10 @@ class TransactionModel {
       'note': note,
       'createdAt': createdAt,
       'fingerprint': fingerprint,
-      'isDeleted': isDeleted, // 🔹 Save isDeleted
+      'isDeleted': isDeleted,
     };
   }
 
-  /// 🔹 CopyWith for Editing
   TransactionModel copyWith({
     String? title,
     double? amount,
@@ -89,7 +85,7 @@ class TransactionModel {
     String? note,
     Timestamp? createdAt,
     String? id,
-    bool? isDeleted, // 🔹 Allow updating isDeleted
+    bool? isDeleted,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -102,7 +98,6 @@ class TransactionModel {
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
       isDeleted: isDeleted ?? this.isDeleted,
-      // Pass null to fingerprint to force regeneration if key fields change
       fingerprint: null, 
     );
   }

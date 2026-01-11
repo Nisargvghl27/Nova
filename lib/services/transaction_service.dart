@@ -20,9 +20,6 @@ class TransactionService {
   DocumentReference<Map<String, dynamic>> get _userRef =>
       _firestore.collection('users').doc(_uid);
 
-  // ==========================================
-  // 🔹 RECALCULATE STATS
-  // ==========================================
   Future<void> recalculateUserStats() async {
     try {
       final snapshot = await _txRef.where('isDeleted', isEqualTo: false).get();
@@ -59,7 +56,6 @@ class TransactionService {
     }
   }
 
-  // ---------------- CRUD METHODS ----------------
   Future<void> addTransaction(TransactionModel tx) async {
     await _txRef.add(tx.toMap());
     await recalculateUserStats();
@@ -93,8 +89,6 @@ class TransactionService {
     await batch.commit();
     await recalculateUserStats();
   }
-
-  // ---------------- WALLET FEATURES ----------------
 
   Future<void> topUpWallet(double amount) async {
     final tx = TransactionModel(
@@ -192,7 +186,7 @@ class TransactionService {
       'fromEmail': senderEmail,
       'amount': amount,
       'status': 'pending',
-      'isRead': false, // 🔹 FIX: Added this field so the query finds it!
+      'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -207,7 +201,7 @@ class TransactionService {
         .snapshots();
   }
 
-  // 3. Mark As Read 🔹 NEW METHOD
+  // 3. Mark As Read 
   Future<void> markNotificationsAsRead() async {
     final batch = _firestore.batch();
     final snapshot = await _firestore

@@ -1,7 +1,7 @@
 import '../constants/categories.dart';
 
 class CategoryService {
-  // 🔹 Priority 1: High Specificity (Recharges, Bills, Groceries, Medical)
+  // Priority 1: High Specificity (Recharges, Bills, Groceries, Medical)
   static final Map<String, List<String>> _highPriorityKeywords = {
     'Healthcare': [
       'medical', 'pharmacy', 'hospital', 'clinic', 'doctor', 'dr.', 'medicos', 
@@ -34,7 +34,7 @@ class CategoryService {
     ],
   };
 
-  // 🔹 Priority 2: General Categories
+  // Priority 2: General Categories
   static final Map<String, List<String>> _generalKeywords = {
     'Travel': [
       'uber', 'ola', 'rapido', 'namma yatri', 'irctc', 'rail', 'metro', 'flight', 
@@ -59,7 +59,7 @@ class CategoryService {
     ]
   };
 
-  /// 🔹 Intelligent Category Detection
+  // Intelligent Category Detection
   static String detectCategory({
     required String merchant,
     required String smsText,

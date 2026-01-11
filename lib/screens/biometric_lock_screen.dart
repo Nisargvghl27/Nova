@@ -23,7 +23,7 @@ class _BiometricLockScreenState extends State<BiometricLockScreen>
   @override
   void initState() {
     super.initState();
-    // 🔹 Pulsing animation for the lock icon
+    // Pulsing animation for the lock icon
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -57,7 +57,7 @@ class _BiometricLockScreenState extends State<BiometricLockScreen>
             children: [
               const Spacer(),
               
-              // 🔹 Animated Lock Icon
+              // Animated Lock Icon
               ScaleTransition(
                 scale: _scaleAnimation,
                 child: Container(
@@ -76,7 +76,7 @@ class _BiometricLockScreenState extends State<BiometricLockScreen>
               
               const SizedBox(height: 40),
               
-              // 🔹 Title
+              // Title
               Text(
                 'Nova Locked',
                 style: TextStyle(
@@ -88,7 +88,7 @@ class _BiometricLockScreenState extends State<BiometricLockScreen>
               ),
               const SizedBox(height: 12),
               
-              // 🔹 Subtitle
+              // Subtitle
               Text(
                 'Please authenticate to access your finances',
                 textAlign: TextAlign.center,
@@ -100,7 +100,7 @@ class _BiometricLockScreenState extends State<BiometricLockScreen>
               
               const Spacer(),
 
-              // 🔹 Unlock Button
+              // Unlock Button
               SizedBox(
                 width: double.infinity,
                 height: 56,

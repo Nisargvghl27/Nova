@@ -4,7 +4,7 @@ import '../models/transaction_model.dart';
 import 'category_service.dart';
 
 class SmsParserService {
-  /// 🔹 Parse multiple pasted SMS
+  /// Parse multiple pasted SMS
   List<TransactionModel> parseBulkSms(String bulkText) {
     final lines = bulkText.split(RegExp(r'\n+'));
     final List<TransactionModel> transactions = [];
@@ -17,11 +17,11 @@ class SmsParserService {
     return transactions;
   }
 
-  /// 🔹 Parse single SMS
+  /// Parse single SMS
   TransactionModel? parse(String smsText) {
     String text = smsText.toLowerCase().trim();
 
-    // 💰 1. SMART AMOUNT DETECTION FIRST
+    // 1. SMART AMOUNT DETECTION FIRST
     // (We detect amount first to confirm it's a transaction before filtering)
     RegExp amountRegex = RegExp(r'(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)', caseSensitive: false);
     var amountMatch = amountRegex.firstMatch(text);
@@ -41,7 +41,7 @@ class SmsParserService {
     final amount = double.tryParse(cleanAmount);
     if (amount == null) return null;
 
-    // ❌ 2. SMART SPAM FILTER
+    // 2. SMART SPAM FILTER
     // Only block "OTP" if the message DOES NOT contain transaction keywords
     bool isTransaction = text.contains('credited') || 
                          text.contains('debited') || 
@@ -59,25 +59,23 @@ class SmsParserService {
       }
     }
 
-    // ==========================================
-    // 🔄 3. DEBIT / CREDIT DETECTION
-    // ==========================================
+
+    // 3. DEBIT / CREDIT DETECTION
+
     final debitKeywords = ['debit', 'spent', 'paid', 'sent', 'purchas', 'withdraw', 'deduct', 'trf to', 'transfer to'];
     final creditKeywords = ['credit', 'received', 'refund', 'cashback', 'deposited', 'added', 'salary', 'transfer from'];
 
     bool isCredit = creditKeywords.any((w) => text.contains(w));
     bool isDebit = debitKeywords.any((w) => text.contains(w));
 
-    // Fallback: "Paid to" usually means Debit
     if (!isDebit && !isCredit) {
       if (text.contains(' to ')) isDebit = true;
     }
     
     final bool finalIsDebit = isCredit ? false : true;
 
-    // ==========================================
-    // 🏪 4. ADVANCED MERCHANT EXTRACTION
-    // ==========================================
+    // 4. ADVANCED MERCHANT EXTRACTION
+
     String merchant = '';
 
     String cleanText = text
@@ -87,7 +85,7 @@ class SmsParserService {
         .replaceAll(RegExp(r'helpline\s*[:\s-]*\d+'), ' ') 
         .replaceAll(RegExp(r'if\s+not\s+u\?'), ' ') 
         .replaceAll(RegExp(r'dear\s+upi\s+user'), ' ') 
-        .replaceAll(RegExp(r'never\s+share\s+.*'), ' ') // Remove security warnings at end
+        .replaceAll(RegExp(r'never\s+share\s+.*'), ' ')
         .replaceAll(RegExp(r'a/c\s*[x0-9]+'), ' ') 
         .replaceAll(RegExp(r'info:?\s*.*'), ' ') 
         .replaceAll(RegExp(r'thru\s+[a-z0-9]+'), ' ')
@@ -95,7 +93,7 @@ class SmsParserService {
         .replaceAll(RegExp(r'\s+'), ' '); 
 
     final merchantPatterns = [
-      RegExp(r'(?:from|to)\s+([a-zA-Z0-9 .&_-]+)'), // Generic from/to
+      RegExp(r'(?:from|to)\s+([a-zA-Z0-9 .&_-]+)'),
       RegExp(r'(?:trf|transfer|sent|paid|pay)\s+to\s+([a-zA-Z0-9 .&_-]+)'),
       RegExp(r'(?:spent|purchase|transxn)\s+(?:at|on)\s+([a-zA-Z0-9 .&_-]+)'),
       RegExp(r'(?:for|info)\s+([a-zA-Z0-9 .&_-]+)'),
@@ -140,18 +138,15 @@ class SmsParserService {
 
     merchant = _capitalize(merchant);
 
-    // ==========================================
-    // 🧠 5. CATEGORY DETECTION
-    // ==========================================
+    // 5. CATEGORY DETECTION
     final category = CategoryService.detectCategory(
       merchant: merchant,
       smsText: text,
       isDebit: finalIsDebit,
     );
 
-    // ==========================================
-    // 📅 6. ADVANCED DATE PARSING
-    // ==========================================
+    // 6. ADVANCED DATE PARSING
+
     DateTime date = _parseDate(text);
 
     return TransactionModel(
@@ -167,7 +162,7 @@ class SmsParserService {
     );
   }
 
-  /// 📅 Parses multiple date formats
+  //Parses multiple date formats
   DateTime _parseDate(String text) {
     try {
       // Pattern 1: Continuous Digits "08112025" (DDMMYYYY)
@@ -205,7 +200,6 @@ class SmsParserService {
 
   DateTime _buildDate(String d, String m, String y) {
     try {
-      // Fix 2-digit years (26 -> 2026)
       if (y.length == 2) y = '20$y';
 
       // Parse Month

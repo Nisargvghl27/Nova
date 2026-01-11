@@ -28,9 +28,9 @@ class BiometricService {
         localizedReason: 'Unlock to access Nova',
         options: const AuthenticationOptions(
           stickyAuth: true,
-          // ⚠️ Set to false to allow PIN/Pattern as backup if biometric fails
+          // Set to false to allow PIN/Pattern as backup if biometric fails
           biometricOnly: false, 
-          // ⚠️ CRITICAL: Set to false to allow Face Unlock (Class 2/Weak Security)
+          // CRITICAL: Set to false to allow Face Unlock (Class 2/Weak Security)
           sensitiveTransaction: false, 
           useErrorDialogs: true,
         ),

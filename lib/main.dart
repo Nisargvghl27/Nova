@@ -1,17 +1,14 @@
-// type: uploaded file
-// fileName: lib/main.dart
-// fullContent:
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 隼 Added for profile check
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_screen.dart';
-import 'screens/edit_profile_screen.dart'; // 隼 Added for profile setup
+import 'screens/edit_profile_screen.dart';
 import 'services/biometric_service.dart';
 import 'screens/biometric_lock_screen.dart';
 
@@ -24,7 +21,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 隼 LOAD SAVED THEME
   final prefs = await SharedPreferences.getInstance();
   final isDark = prefs.getBool('isDark') ?? false;
   themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
@@ -81,7 +77,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// 隼 UPDATED: Handles Biometric Lock Logic & New User Profile Setup
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -100,7 +95,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
     _checkBiometricSettings();
   }
 
-  /// 隼 Check if user has enabled biometric lock
   Future<void> _checkBiometricSettings() async {
     final user = FirebaseAuth.instance.currentUser;
     // Only lock if user is actually logged in
@@ -111,7 +105,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           _isLocked = true;
           _isLoading = false;
         });
-        _authenticate(); // Auto-trigger face/fingerprint scan
+        _authenticate();
         return;
       }
     }
@@ -122,13 +116,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
     });
   }
 
-  /// 隼 Trigger the native authentication prompt
   Future<void> _authenticate() async {
     if (_isAuthenticating) return;
     
     setState(() => _isAuthenticating = true);
-    
-    // Slight delay to ensure UI builds before auth dialog pops up
+
     await Future.delayed(const Duration(milliseconds: 200));
 
     final success = await BiometricService.authenticate();
@@ -157,7 +149,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         final user = snapshot.data;
 
         if (user != null && user.emailVerified) {
-          // 隼 NEW: Check if Profile is Complete (Firestore Stream)
           return StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
             builder: (context, userSnapshot) {
@@ -169,12 +160,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
               // 2. Data Check
               final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
               
-              // We use 'phone' as a proxy for a completed profile because it's mandatory
-              // and initialized to empty string for new Google users.
               final String phone = userData?['phone'] ?? '';
 
               if (phone.trim().isEmpty) {
-                // 隼 REDIRECT TO EDIT PROFILE FOR NEW USERS
                 return EditProfileScreen(
                   currentName: userData?['name'] ?? user.displayName ?? '',
                   currentBase64Photo: userData?['base64Photo'],

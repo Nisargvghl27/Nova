@@ -385,7 +385,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  // UPDATED: Section now follows order: Username, Phone, Profession, Birthday, About Me
   Widget _buildUserInfoSection(
     String? bio, String? phone, String? profession, 
     String? dob, String? username, bool isDark
@@ -409,32 +408,27 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Username
           if (username != null && username.isNotEmpty) ...[
              _buildInfoRow(Icons.alternate_email_rounded, 'Username', "@$username", Colors.purple, isDark),
           ],
 
-          // 2. Phone
           if (phone != null && phone.isNotEmpty) ...[
             if (username != null && username.isNotEmpty) _buildDivider(isDark),
             _buildInfoRow(Icons.phone_rounded, 'Phone', phone, const Color(0xFF2575FC), isDark),
           ],
 
-          // 3. Profession
           if (profession != null && profession.isNotEmpty) ...[
              if ((username != null && username.isNotEmpty) || (phone != null && phone.isNotEmpty)) 
                _buildDivider(isDark),
              _buildInfoRow(Icons.work_rounded, 'Profession', profession, Colors.orange, isDark),
           ],
           
-          // 4. Birthday (Date of Birth)
           if (dob != null && dob.isNotEmpty) ...[
              if ((username != null && username.isNotEmpty) || (phone != null && phone.isNotEmpty) || (profession != null && profession.isNotEmpty))
                _buildDivider(isDark),
              _buildInfoRow(Icons.cake_rounded, 'Birthday', dob, Colors.pink, isDark),
           ],
 
-          // 5. About Me (Bio) - Now at the end
           if (bio != null && bio.isNotEmpty) ...[
             if ((username != null && username.isNotEmpty) || (phone != null && phone.isNotEmpty) || (profession != null && profession.isNotEmpty) || (dob != null && dob.isNotEmpty))
               _buildDivider(isDark),

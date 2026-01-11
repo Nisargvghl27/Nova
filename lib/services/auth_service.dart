@@ -26,8 +26,6 @@ class AuthService {
       if (user != null) {
         await _createUserDocument(user);
         await user.sendEmailVerification();
-        // 🔹 REMOVED: await _auth.signOut(); 
-        // We keep the user logged in so they can complete their profile immediately.
       }
       return user;
     } on FirebaseAuthException catch (e) {
@@ -61,7 +59,6 @@ class AuthService {
     }
   }
 
-  // ---------------- UPDATE PROFILE (Extended) ----------------
   Future<void> updateProfile({
     required String name,
     String? phone,
@@ -70,15 +67,14 @@ class AuthService {
     String? dob,
     String? profession,
     String? username,
+    double? savingsGoal,
   }) async {
     try {
       final user = _auth.currentUser;
       if (user == null) throw Exception("No user logged in");
 
-      // 1. Update Auth Display Name
       await user.updateDisplayName(name);
 
-      // 2. Prepare Firestore Data
       final Map<String, dynamic> data = {
         'name': name,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -90,8 +86,8 @@ class AuthService {
       if (dob != null) data['dob'] = dob;
       if (profession != null) data['profession'] = profession;
       if (username != null) data['username'] = username;
+      if (savingsGoal != null) data['savingsGoal'] = savingsGoal;
 
-      // 3. Update Firestore Document
       await _firestore.collection('users').doc(user.uid).set(data, SetOptions(merge: true));
 
       await user.reload();
@@ -100,7 +96,7 @@ class AuthService {
     }
   }
 
-  // ---------------- CHANGE PASSWORD (NEW) ----------------
+  // ---------------- CHANGE PASSWORD ----------------
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
@@ -110,14 +106,11 @@ class AuthService {
       if (user == null) throw Exception("No user logged in");
       if (user.email == null) throw Exception("User email not found");
 
-      // 1. Re-authenticate (Required for security operations)
       final cred = EmailAuthProvider.credential(
         email: user.email!,
         password: currentPassword,
       );
       await user.reauthenticateWithCredential(cred);
-
-      // 2. Update Password
       await user.updatePassword(newPassword);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'wrong-password') {
@@ -196,6 +189,7 @@ class AuthService {
       'profession': '',
       'username': '',
       'dob': '',
+      'savingsGoal': 0.0,
     });
   }
 

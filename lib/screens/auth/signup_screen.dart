@@ -38,7 +38,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       if (!mounted) return;
 
-      // 🔹 2. Show Link Sent Confirmation BEFORE Navigation
+      // 2. Show Link Sent Confirmation BEFORE Navigation
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -49,7 +49,7 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       );
 
-      // 🔹 3. Navigate to Profile Setup
+      // 3. Navigate to Profile Setup
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(

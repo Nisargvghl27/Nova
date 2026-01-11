@@ -347,7 +347,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
-  // 🔹 RECENTLY DELETED BUTTON
+  // RECENTLY DELETED BUTTON
   Widget _buildRecentlyDeletedButton() {
     final count = widget.deletedTransactions.length;
     if (count == 0) return const SizedBox.shrink();
@@ -739,7 +739,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 class _RecentlyDeletedScreen extends StatelessWidget {
   const _RecentlyDeletedScreen();
 
-  // 🔹 Helper to show SnackBar
+  // Helper to show SnackBar
   void _showSnackBar(BuildContext context, String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -759,7 +759,7 @@ class _RecentlyDeletedScreen extends StatelessWidget {
     );
   }
 
-  // 🔹 Confirmation Sheet
+  // Confirmation Sheet
   void _showConfirmation(
     BuildContext context, {
     required String title,

@@ -28,7 +28,7 @@ class _BudgetPredictionScreenState extends State<BudgetPredictionScreen> {
 
   Future<void> _loadData() async {
     try {
-      // 1. Calculate Current Month Spending (for Progress Bar)
+      // Calculate Current Month Spending (for Progress Bar)
       final now = DateTime.now();
       final startOfMonth = DateTime(now.year, now.month, 1);
       
@@ -54,7 +54,7 @@ class _BudgetPredictionScreenState extends State<BudgetPredictionScreen> {
         spending[tx.category] = (spending[tx.category] ?? 0) + tx.amount;
       }
 
-      // 2. Load AI Predictions
+      // Load AI Predictions
       final predictions = await _budgetService.calculatePredictions();
 
       if (mounted) {
@@ -75,7 +75,7 @@ class _BudgetPredictionScreenState extends State<BudgetPredictionScreen> {
     }
   }
 
-  // 🔹 Dialog to Set Budget / View Graph Comparison
+  // Dialog to Set Budget / View Graph Comparison
   void _showSetBudgetDialog(String category, double currentBudget, double spent, double? suggested) {
     final controller = TextEditingController(
       text: currentBudget > 0 ? currentBudget.toStringAsFixed(0) : ''
@@ -178,7 +178,6 @@ class _BudgetPredictionScreenState extends State<BudgetPredictionScreen> {
   }
 
   Widget _buildVerticalBar(String label, double amount, Color color, bool isDark) {
-    // Normalize height (max 100px)
     double height = (amount / 5000 * 60).clamp(4.0, 60.0); 
     if (amount == 0) height = 4;
 
@@ -234,7 +233,6 @@ class _BudgetPredictionScreenState extends State<BudgetPredictionScreen> {
                   final spent = _currentMonthSpending[category] ?? 0.0;
                   final prediction = _predictions[category] ?? 0.0;
                   
-                  // Hide categories with absolutely no activity or setup to keep UI clean
                   if (spent == 0 && budget == 0 && prediction == 0) {
                      return const SizedBox.shrink(); 
                   }

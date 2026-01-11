@@ -14,7 +14,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    // 🔹 Mark all as read when screen opens
+    // Mark all as read when screen opens
     TransactionService().markNotificationsAsRead();
   }
 

@@ -75,7 +75,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
 
   @override
   Widget build(BuildContext context) {
-    // 🔹 Theme Colors
+    // Theme Colors
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
     

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/transaction_model.dart';
 import '../services/transaction_service.dart';
-import 'notifications_screen.dart'; // 🔹 Added Import
+import 'notifications_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -36,7 +37,6 @@ class _WalletScreenState extends State<WalletScreen>
 
   // ---------------- DIALOGS ----------------
 
-  // 1. SEND MONEY DIALOG
   void _showSendDialog() {
     final emailCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
@@ -84,7 +84,6 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-  // 2. REQUEST MONEY DIALOG
   void _showRequestDialog() {
     final emailCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
@@ -211,13 +210,6 @@ class _WalletScreenState extends State<WalletScreen>
                 colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
               ),
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF2575FC).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: const Icon(
               Icons.account_balance_wallet_rounded,
@@ -239,38 +231,78 @@ class _WalletScreenState extends State<WalletScreen>
                     color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
-                SizedBox(height: 2),
                 Text(
                   'Manage your finances',
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark ? Colors.white70 : Colors.grey,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          // 🔹 UPDATED: Added Gesture Detector to Open Notification Screen
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+
+          StreamBuilder<QuerySnapshot>(
+            stream: TransactionService().getNotificationsStream(),
+            builder: (context, snapshot) {
+              int unreadCount = 0;
+              if (snapshot.hasData) {
+                unreadCount = snapshot.data!.docs
+                    .where((doc) => (doc.data() as Map<String, dynamic>)['isRead'] == false)
+                    .length;
+              }
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                  );
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[800] : Colors.grey[100],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.notifications_none_rounded,
+                        size: 22,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            unreadCount > 9 ? '9+' : '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               );
             },
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey[800] : Colors.grey[100],
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.notifications_none_rounded, 
-                size: 22,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-            ),
           ),
         ],
       ),
@@ -278,209 +310,123 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildCreditCard(double balance, double income, double expense) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 0.9 + (value * 0.1),
-          child: Opacity(opacity: value, child: child),
-        );
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        setState(() => _isCardFlipped = !_isCardFlipped);
       },
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          setState(() => _isCardFlipped = !_isCardFlipped);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
-          height: 220,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: _isCardFlipped
-                  ? [const Color(0xFF6A11CB), const Color(0xFF2575FC)]
-                  : [const Color(0xFF2575FC), const Color(0xFF6A11CB)],
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        height: 220,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: _isCardFlipped
+                ? [const Color(0xFF6A11CB), const Color(0xFF2575FC)]
+                : [const Color(0xFF2575FC), const Color(0xFF6A11CB)],
+          ),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2575FC).withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2575FC).withOpacity(0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: -40,
+              right: -40,
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
               ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Decorative circles
-              Positioned(
-                top: -40,
-                right: -40,
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.1),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Total Balance',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Icon(Icons.credit_card_rounded, color: Colors.white, size: 24),
+                    ],
                   ),
-                ),
-              ),
-              Positioned(
-                bottom: -20,
-                left: -20,
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.1),
+                  Text(
+                    '₹ ${balance.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 38,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '**** **** **** 8921',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('MM/yy').format(DateTime.now()),
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              // Card content
-              Padding(
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Total Balance',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.credit_card_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ],
-                    ),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: balance),
-                      duration: const Duration(milliseconds: 1200),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, child) {
-                        return Text(
-                          '₹ ${value.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 40,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -1,
-                          ),
-                        );
-                      },
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          '**** **** **** 8921',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        Text(
-                          DateFormat('MM/yy').format(DateTime.now()),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildQuickActions() {
-    final actions = [
-      {
-        'icon': Icons.arrow_upward_rounded, 
-        'label': 'Send', 
-        'color': const Color(0xFF51CF66),
-        'onTap': _showSendDialog,
-      },
-      {
-        'icon': Icons.arrow_downward_rounded, 
-        'label': 'Request', 
-        'color': const Color(0xFF2575FC),
-        'onTap': _showRequestDialog,
-      },
-    ];
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center, // Center aligned
-        children: actions.asMap().entries.map((entry) {
-          final index = entry.key;
-          final action = entry.value;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20), // Spacing
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: Duration(milliseconds: 700 + (index * 100)),
-              curve: Curves.easeOutCubic,
-              builder: (context, animValue, child) {
-                return Transform.scale(
-                  scale: 0.8 + (animValue * 0.2),
-                  child: Opacity(opacity: animValue, child: child),
-                );
-              },
-              child: _buildActionButton(
-                action['icon'] as IconData,
-                action['label'] as String,
-                action['color'] as Color,
-                action['onTap'] as VoidCallback,
-              ),
-            ),
-          );
-        }).toList(),
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildActionButton(
+          Icons.arrow_upward_rounded, 
+          'Send', 
+          const Color(0xFF51CF66), 
+          _showSendDialog
+        ),
+        const SizedBox(width: 40),
+        _buildActionButton(
+          Icons.arrow_downward_rounded, 
+          'Request', 
+          const Color(0xFF2575FC), 
+          _showRequestDialog
+        ),
+      ],
     );
   }
 
   Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = Theme.of(context).cardColor;
-
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -489,36 +435,26 @@ class _WalletScreenState extends State<WalletScreen>
       child: Column(
         children: [
           Container(
-            height: 68,
-            width: 68,
+            height: 64,
+            width: 64,
             decoration: BoxDecoration(
-              color: cardColor,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.04),
-                  blurRadius: 12,
+                  blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-            ),
+            child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 12),
           Text(
             label,
             style: TextStyle(
               color: isDark ? Colors.white70 : Colors.grey[700],
-              fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -528,101 +464,37 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildInsightsCards(double income, double expense) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 700),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildInsightCard(
-              icon: Icons.arrow_upward_rounded,
-              label: 'Income',
-              amount: income,
-              color: const Color(0xFF51CF66),
-              isIncome: true,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildInsightCard(
-              icon: Icons.arrow_downward_rounded,
-              label: 'Expense',
-              amount: expense,
-              color: const Color(0xFFFF6B6B),
-              isIncome: false,
-            ),
-          ),
-        ],
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: _buildInsightCard('Income', income, const Color(0xFF51CF66)),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildInsightCard('Expense', expense, const Color(0xFFFF6B6B)),
+        ),
+      ],
     );
   }
 
-  Widget _buildInsightCard({
-    required IconData icon,
-    required String label,
-    required double amount,
-    required Color color,
-    required bool isIncome,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = Theme.of(context).cardColor;
-
+  Widget _buildInsightCard(String label, double amount, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: cardColor,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 16),
           Text(
             label,
-            style: TextStyle(
-              color: isDark ? Colors.white70 : Colors.grey[600],
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: amount),
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, child) {
-              return Text(
-                '₹${value.toStringAsFixed(0)}',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                  letterSpacing: -0.5,
-                ),
-              );
-            },
+          Text(
+            '₹${amount.toStringAsFixed(0)}',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color),
           ),
         ],
       ),
@@ -630,53 +502,58 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildRecentTransactionsHeader() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Recent Transactions',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        Text(
+          'Last 5',
+          style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 10 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
+  Widget _buildAnimatedTransactionItem(TransactionModel tx, int index) {
+    final isDebit = tx.type == 'debit';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2575FC).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.history_rounded,
-                  size: 18,
-                  color: Color(0xFF2575FC),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Recent Transactions',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                  color: isDark ? Colors.white : Colors.black,
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: (isDebit ? Colors.red : Colors.green).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              isDebit ? Icons.arrow_outward : Icons.arrow_downward,
+              color: isDebit ? Colors.red : Colors.green,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(tx.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(DateFormat('MMM dd').format(tx.date), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
           ),
           Text(
-            'Last 5',
+            '${isDebit ? '-' : '+'}₹${tx.amount.toStringAsFixed(0)}',
             style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.white70 : Colors.grey[600],
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
+              color: isDebit ? Colors.red[600] : Colors.green[600],
             ),
           ),
         ],
@@ -684,185 +561,18 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-  Widget _buildAnimatedTransactionItem(TransactionModel tx, int index) {
-    final isDebit = tx.type == 'debit';
-    final color = _getColorForCategory(tx.category);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = Theme.of(context).cardColor;
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 600 + (index * 100)),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(30 * (1 - value), 0),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                _getIconForCategory(tx.category),
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tx.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      letterSpacing: -0.3,
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        tx.category,
-                        style: TextStyle(
-                          color: isDark ? Colors.white70 : Colors.grey[600],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        ' • ',
-                        style: TextStyle(color: Colors.grey[400]),
-                      ),
-                      Text(
-                        DateFormat('MMM dd').format(tx.date),
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              '${isDebit ? '-' : '+'}₹${tx.amount.toStringAsFixed(0)}',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-                color: isDebit ? Colors.red[600] : Colors.green[600],
-                letterSpacing: -0.3,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildEmptyState() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = Theme.of(context).cardColor;
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 0.9 + (value * 0.1),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(40),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40.0),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey[800] : Colors.grey[100],
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.receipt_long_outlined,
-                size: 48,
-                color: Colors.grey[400],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'No transactions yet',
-              style: TextStyle(
-                fontSize: 16,
-                color: isDark ? Colors.white70 : Colors.grey[600],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Start adding transactions to track your wallet',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[400],
-              ),
-              textAlign: TextAlign.center,
-            ),
+            Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text('No transactions yet', style: TextStyle(fontWeight: FontWeight.w600)),
           ],
         ),
       ),
     );
-  }
-
-  IconData _getIconForCategory(String category) {
-     switch (category) {
-      case 'Food': return Icons.restaurant_rounded;
-      case 'Transport': return Icons.directions_car_rounded;
-      case 'Shopping': return Icons.shopping_bag_rounded;
-      case 'Entertainment': return Icons.movie_rounded;
-      case 'Bills': return Icons.receipt_long_rounded;
-      case 'Travel': return Icons.flight_rounded;
-      default: return Icons.category_rounded;
-    }
-  }
-
-  Color _getColorForCategory(String category) {
-    switch (category) {
-      case 'Food': return const Color(0xFFFF6B6B);
-      case 'Transport': return const Color(0xFF4ECDC4);
-      case 'Shopping': return const Color(0xFFFFA07A);
-      case 'Entertainment': return const Color(0xFFBA68C8);
-      case 'Bills': return const Color(0xFF95E1D3);
-      case 'Travel': return const Color(0xFF4ECDC4);
-      default: return const Color(0xFF78909C);
-    }
   }
 }

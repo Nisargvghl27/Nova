@@ -20,7 +20,7 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
   final List<String> _periods = ['7 Days', '30 Days', '90 Days', '1 Year'];
 
   late AnimationController _animationController;
-  int _touchedIndex = -1; // For Donut Chart interaction
+  int _touchedIndex = -1;
 
   @override
   void initState() {
@@ -116,14 +116,11 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
     );
   }
 
-  // ================= IMPROVED EXPENSE DISTRIBUTION UI =================
-
   Widget _buildExpenseDistribution(List<MapEntry<String, double>> sortedCategories, double total) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
     final cardColor = Theme.of(context).cardColor;
 
-    // Show top 4 categories and group the rest into 'Others'
     List<MapEntry<String, double>> displayList = [];
     if (sortedCategories.length > 5) {
       displayList = sortedCategories.take(4).toList();

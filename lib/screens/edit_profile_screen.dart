@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/transaction_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String currentName;
@@ -48,13 +49,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _usernameController;
   late TextEditingController _dobController;
   late TextEditingController _emailController;
+
+  // New controllers for financial setup
+  late TextEditingController _initialBalanceController;
+  late TextEditingController _savingsGoalController;
   
   bool _isLoading = false;
   File? _selectedImage;
   bool _isPhotoRemoved = false;
   bool _hasChanges = false;
 
-  Timer? _debounceTimer;
   String _lastQuery = '';
 
   @override
@@ -70,6 +74,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _usernameController = TextEditingController(text: widget.currentUsername ?? '');
     _dobController = TextEditingController(text: widget.currentDob ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
+
+    // Initialize financial setup controllers
+    _initialBalanceController = TextEditingController(text: '0');
+    _savingsGoalController = TextEditingController(text: '0');
     
     void markChanged() {
       if (!_hasChanges) setState(() => _hasChanges = true);
@@ -82,6 +90,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _professionController.addListener(markChanged);
     _usernameController.addListener(markChanged);
     _dobController.addListener(markChanged);
+    _initialBalanceController.addListener(markChanged);
+    _savingsGoalController.addListener(markChanged);
   }
 
   @override
@@ -94,7 +104,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _usernameController.dispose();
     _dobController.dispose();
     _emailController.dispose();
-    _debounceTimer?.cancel();
+    _initialBalanceController.dispose();
+    _savingsGoalController.dispose();
     super.dispose();
   }
 
@@ -119,19 +130,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       debugPrint("Location search error: $e");
     }
     return const Iterable<String>.empty();
-  }
-  
-  double _calculateCompletion() {
-    int total = 7; 
-    int filled = 0;
-    if (_nameController.text.trim().isNotEmpty) filled++;
-    if (_phoneController.text.trim().isNotEmpty) filled++;
-    if (_bioController.text.trim().isNotEmpty) filled++;
-    if (_locationController.text.trim().isNotEmpty) filled++;
-    if (_professionController.text.trim().isNotEmpty) filled++;
-    if (_usernameController.text.trim().isNotEmpty) filled++;
-    if (_dobController.text.trim().isNotEmpty) filled++;
-    return filled / total;
   }
 
   Future<void> _pickImage() async {
@@ -184,8 +182,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    if (widget.isSetupMode) return false; // Prevent back on setup
-
+    if (widget.isSetupMode) return false;
     if (!_hasChanges) return true;
 
     final shouldPop = await showDialog<bool>(
@@ -204,7 +201,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    // 隼 1. VALIDATE ALL FIELDS (Including Name & Phone)
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all compulsory fields')),
@@ -217,6 +213,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       final authService = AuthService();
+      final txService = TransactionService();
+
+      // Update Profile (including the new savings goal)
       await authService.updateProfile(
         name: _nameController.text.trim(),
         phone: _phoneController.text.trim(),
@@ -225,7 +224,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         profession: _professionController.text.trim(),
         username: _usernameController.text.trim(),
         dob: _dobController.text.trim(),
+        savingsGoal: double.tryParse(_savingsGoalController.text.trim()) ?? 0.0,
       );
+
+      // Handle Initial Wallet Setup (Only in Setup Mode)
+      if (widget.isSetupMode) {
+        double initialBal = double.tryParse(_initialBalanceController.text) ?? 0;
+        if (initialBal > 0) {
+          // Initialize balance by adding a credit transaction
+          await txService.topUpWallet(initialBal);
+        }
+      }
 
       if (_isPhotoRemoved) {
         await authService.deleteProfileImage();
@@ -236,43 +245,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!mounted) return;
 
       if (widget.isSetupMode) {
-        // 隼 UPDATED LOGIC FOR NEW USERS
-        final user = FirebaseAuth.instance.currentUser;
-        
-        if (user != null && user.emailVerified) {
-          // GOOGLE / VERIFIED USER: Just finish. AuthWrapper will handle transition.
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile Completed! Welcome to Nova.'),
-              backgroundColor: Color(0xFF2575FC),
-              duration: Duration(seconds: 3),
-            ),
-          );
-          // We don't pop or logout here. The Firestore stream in main.dart will 
-          // detect the new data and switch to MainScreen automatically.
-        } else {
-          // EMAIL / UNVERIFIED USER: Logout and go back to login.
-          await authService.logout();
-          if (!mounted) return;
-          Navigator.pop(context); // Back to Login
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile Completed! Please verify email & login.'),
-              backgroundColor: Color(0xFF2575FC),
-              duration: Duration(seconds: 5),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile Completed! Welcome to Nova.'),
+            backgroundColor: Color(0xFF2575FC),
+          ),
+        );
       } else {
-        // NORMAL EDIT MODE
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Row(children: [Icon(Icons.check_circle_rounded, color: Colors.white), SizedBox(width: 8), Text('Profile updated successfully')]),
             backgroundColor: Color(0xFF2575FC),
           ),
         );
-        setState(() => _hasChanges = false);
         Navigator.pop(context);
       }
 
@@ -296,9 +281,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     else if (widget.currentBase64Photo != null && widget.currentBase64Photo!.isNotEmpty) { try { backgroundImage = MemoryImage(base64Decode(widget.currentBase64Photo!)); hasImage = true; } catch (e) { debugPrint("$e"); } } 
     else if (user?.photoURL != null) { backgroundImage = NetworkImage(user!.photoURL!); hasImage = true; }
 
-    double completion = _calculateCompletion();
-    int percent = (completion * 100).toInt();
-
     return WillPopScope(
       onWillPop: _onWillPop,
       child: GestureDetector(
@@ -306,7 +288,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: AppBar(
-            title: Text(widget.isSetupMode ? 'Complete Profile' : 'Edit Profile', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+            title: Text(widget.isSetupMode ? 'Setup Account' : 'Edit Profile', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
             centerTitle: true,
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -325,25 +307,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (widget.isSetupMode) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 24),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.info_outline, color: Colors.orange),
-                          const SizedBox(width: 12),
-                          const Expanded(child: Text("Please complete your profile to continue.", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600))),
-                        ],
-                      ),
-                    ),
-                  ],
-
                   // --- AVATAR ---
                   Center(child: Stack(children: [
                     Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Theme.of(context).cardColor, width: 4), boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))]), child: CircleAvatar(radius: 60, backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200], backgroundImage: backgroundImage, child: backgroundImage == null ? Icon(Icons.person, size: 60, color: Colors.grey[400]) : null)),
@@ -355,45 +318,55 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Text('Personal Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF6A11CB))),
                   const SizedBox(height: 24),
 
-                  // 隼 NAME: COMPULSORY
                   _buildLabel('Full Name *', isDark), const SizedBox(height: 8),
-                  _buildTextField(
-                    controller: _nameController, 
-                    hint: 'Enter your name', 
-                    icon: Icons.person_outline_rounded, 
-                    isDark: isDark, 
-                    textCapitalization: TextCapitalization.words, 
-                    validator: (val) => val!.trim().isEmpty ? 'Name is required' : null
-                  ),
+                  _buildTextField(controller: _nameController, hint: 'Enter your name', icon: Icons.person_outline_rounded, isDark: isDark, textCapitalization: TextCapitalization.words, validator: (val) => val!.trim().isEmpty ? 'Name is required' : null),
                   const SizedBox(height: 20),
                   
-                  // 隼 PHONE: COMPULSORY
                   _buildLabel('Phone Number *', isDark), const SizedBox(height: 8),
-                  _buildTextField(
-                    controller: _phoneController, 
-                    hint: '+91 98765 43210', 
-                    icon: Icons.phone_rounded, 
-                    isDark: isDark, 
-                    keyboardType: TextInputType.phone, 
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(15)],
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'Phone number is required';
-                      if (val.length < 10) return 'Enter a valid phone number';
-                      return null;
-                    },
-                  ),
+                  _buildTextField(controller: _phoneController, hint: 'e.g. 9876543210', icon: Icons.phone_rounded, isDark: isDark, keyboardType: TextInputType.phone, validator: (val) => val!.trim().length < 10 ? 'Enter valid phone number' : null),
                   const SizedBox(height: 20),
 
                   _buildLabel('Email Address', isDark), const SizedBox(height: 8),
                   _buildTextField(controller: _emailController, hint: 'email@example.com', icon: Icons.email_outlined, isDark: isDark, readOnly: true),
                   const SizedBox(height: 20),
 
+                  // FINANCIAL ONBOARDING (Setup Mode Only)
+                  if (widget.isSetupMode) ...[
+                    const SizedBox(height: 12),
+                    Text('Financial Setup', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF6A11CB))),
+                    const SizedBox(height: 8),
+                    Text('Tell us about your current status and goals.', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                    const SizedBox(height: 24),
+
+                    _buildLabel('Current Wallet Balance (₹)', isDark), const SizedBox(height: 8),
+                    _buildTextField(
+                      controller: _initialBalanceController, 
+                      hint: 'Initial balance to start with', 
+                      icon: Icons.account_balance_wallet_rounded, 
+                      isDark: isDark, 
+                      keyboardType: TextInputType.number, 
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly]
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildLabel('Monthly Savings Goal (₹)', isDark), const SizedBox(height: 8),
+                    _buildTextField(
+                      controller: _savingsGoalController, 
+                      hint: 'e.g. 5000', 
+                      icon: Icons.savings_rounded, 
+                      isDark: isDark, 
+                      keyboardType: TextInputType.number, 
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly]
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
                   _buildLabel('Username (Handle)', isDark), const SizedBox(height: 8),
-                  _buildTextField(controller: _usernameController, hint: '@username', icon: Icons.alternate_email_rounded, isDark: isDark, inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-z0-9._]'))]),
+                  _buildTextField(controller: _usernameController, hint: '@username', icon: Icons.alternate_email_rounded, isDark: isDark),
                   const SizedBox(height: 20),
                   
                   _buildLabel('Profession', isDark), const SizedBox(height: 8),
-                  _buildTextField(controller: _professionController, hint: 'e.g. Designer, Developer', icon: Icons.work_outline_rounded, isDark: isDark, textCapitalization: TextCapitalization.words),
+                  _buildTextField(controller: _professionController, hint: 'e.g. Developer', icon: Icons.work_outline_rounded, isDark: isDark, textCapitalization: TextCapitalization.words),
                   const SizedBox(height: 20),
 
                   _buildLabel('Location', isDark), const SizedBox(height: 8),
@@ -403,7 +376,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     onSelected: (sel) { _locationController.text = sel; FocusScope.of(context).unfocus(); },
                     fieldViewBuilder: (ctx, ctrl, focus, submit) {
                       ctrl.addListener(() { if (_locationController.text != ctrl.text) _locationController.text = ctrl.text; });
-                      return _buildTextField(controller: ctrl, focusNode: focus, onFieldSubmitted: submit, hint: 'Search City, Country...', icon: Icons.location_on_outlined, isDark: isDark, textCapitalization: TextCapitalization.words);
+                      return _buildTextField(controller: ctrl, focusNode: focus, onFieldSubmitted: submit, hint: 'City, Country', icon: Icons.location_on_outlined, isDark: isDark, textCapitalization: TextCapitalization.words);
                     },
                     optionsViewBuilder: (ctx, onSel, opts) => Align(alignment: Alignment.topLeft, child: Material(elevation: 4, borderRadius: BorderRadius.circular(16), color: Theme.of(context).cardColor, child: Container(width: MediaQuery.of(context).size.width - 48, constraints: const BoxConstraints(maxHeight: 200), child: ListView.separated(padding: EdgeInsets.zero, shrinkWrap: true, itemCount: opts.length, separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey[200]), itemBuilder: (ctx, i) => ListTile(title: Text(opts.elementAt(i), style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13)), onTap: () => onSel(opts.elementAt(i))))))),
                   ),
@@ -414,7 +387,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   const SizedBox(height: 20),
 
                   _buildLabel('Bio / About Me', isDark), const SizedBox(height: 8),
-                  _buildTextField(controller: _bioController, hint: 'Tell us a bit about yourself...', icon: Icons.info_outline_rounded, isDark: isDark, maxLines: 3, maxLength: 150, textCapitalization: TextCapitalization.sentences),
+                  _buildTextField(controller: _bioController, hint: 'Brief description...', icon: Icons.info_outline_rounded, isDark: isDark, maxLines: 3, maxLength: 150),
 
                   const SizedBox(height: 40),
 

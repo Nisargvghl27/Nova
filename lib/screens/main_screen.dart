@@ -71,7 +71,7 @@ class _MainScreenState extends State<MainScreen> {
             totalExpense: expense,
             onDelete: (id) => TransactionService().deleteTransaction(id),
             onUndo: () {}, 
-            // 🔹 NAVIGATE TO PROFILE TAB (Index 4)
+            // NAVIGATE TO PROFILE TAB (Index 4)
             onProfileTap: () => _onItemTapped(4), 
           ),
 

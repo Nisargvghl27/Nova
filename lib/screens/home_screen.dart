@@ -14,7 +14,6 @@ import 'edit_transaction_screen.dart';
 import 'paste_sms_screen.dart';
 import 'notifications_screen.dart';
 
-// 🔹 Changed to StatefulWidget to handle "View All" state
 class HomeScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
   final double totalBalance;
@@ -40,7 +39,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // 🔹 State for toggling "View All"
+  // State for toggling "View All"
   bool _showAllTransactions = false;
 
   // ---------------- DELETE LOGIC ----------------
@@ -171,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       }),
                     
-                    // 🔹 "SHOW LESS" BUTTON AT BOTTOM IF EXPANDED
+                    // "SHOW LESS" BUTTON AT BOTTOM IF EXPANDED
                     if (_showAllTransactions && widget.transactions.length > 5) ...[
                        const SizedBox(height: 16),
                        Center(
@@ -403,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           
-          // 🔹 TOGGLE VIEW ALL / SHOW LESS
+          // TOGGLE VIEW ALL / SHOW LESS
           if (widget.transactions.length > 5)
             TextButton(
               onPressed: () {

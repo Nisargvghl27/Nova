@@ -46,7 +46,7 @@ Whether you are splitting bills, analyzing monthly trends, or securing your data
 * **Visual Analytics:** Interactive Pie Charts and Trend Lines (Daily, Weekly, Monthly, Yearly).
 
 ### 🔐 Security & Personalization
-* **Biometric Lock:** Secure your financial data with Fingerprint/Face ID.
+* **Biometric Lock:** Secure your financial data with Fingerprint.
 * **Cloud Sync:** Real-time data synchronization with Firestore.
 * **Custom Profile:** Edit bio, location, profession, and profile picture.
 * **Theme Support:** Beautiful native Dark and Light modes.
